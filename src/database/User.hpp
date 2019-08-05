@@ -57,22 +57,24 @@ class AuthToken
 		using pointer = Wt::Dbo::ptr<AuthToken>;
 
 		AuthToken() = default;
-		AuthToken(const std::string& value, const Wt::WDateTime& expiry, Wt::Dbo::ptr<User> user);
+		AuthToken(const std::string& usage, const std::string& value, const Wt::WDateTime& expiry, Wt::Dbo::ptr<User> user);
 
 		// Utility
-		static pointer create(Session& session, const std::string& value, const Wt::WDateTime&expiry, Wt::Dbo::ptr<User> user);
+		static pointer create(Session& session, const std::string& usage, const std::string& value, const Wt::WDateTime&expiry, Wt::Dbo::ptr<User> user);
 		static void removeExpiredTokens(Session& session, const Wt::WDateTime& now);
-		static pointer getByValue(Session& session, const std::string& value);
+		static pointer getByValue(Session& session, const std::string& usage, const std::string& value);
 		static pointer getById(Session& session, IdType tokenId);
 
 		// Accessors
 		const Wt::WDateTime&	getExpiry() const { return _expiry; }
 		Wt::Dbo::ptr<User>	getUser() const { return _user; }
 		const std::string&	getValue() const { return _value; }
+		const std::string&	getUsage() const { return _value; }
 
 		template<class Action>
 		void persist(Action& a)
 		{
+			Wt::Dbo::field(a,	_usage,		"usage");
 			Wt::Dbo::field(a,	_value,		"value");
 			Wt::Dbo::field(a,	_expiry,	"expiry");
 			Wt::Dbo::belongsTo(a,	_user,		"user", Wt::Dbo::OnDeleteCascade);
@@ -80,6 +82,7 @@ class AuthToken
 
 	private:
 
+		std::string		_usage;
 		std::string		_value;
 		Wt::WDateTime		_expiry;
 

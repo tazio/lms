@@ -38,12 +38,13 @@
 namespace UserInterface {
 
 static const std::string authCookieName {"LmsAuth"};
+static const std::string authTokenUsage {"LmsUI"};
 
 static
 void
 createAuthToken(Database::IdType userId, const Wt::WDateTime& expiry)
 {
-	const std::string secret {getService<::Auth::AuthTokenService>()->createAuthToken(LmsApp->getDbSession(), userId, expiry)};
+	const std::string secret {getService<::Auth::AuthTokenService>()->createAuthToken(LmsApp->getDbSession(), userId, authTokenUsage, expiry)};
 
 	LmsApp->setCookie(authCookieName,
 			secret,
@@ -61,7 +62,11 @@ processAuthToken(const Wt::WEnvironment& env)
 	if (!authCookie)
 		return boost::none;
 
-	const auto res {getService<::Auth::AuthTokenService>()->processAuthToken(LmsApp->getDbSession(), boost::asio::ip::address::from_string(env.clientAddress()), *authCookie)};
+	const auto res {getService<::Auth::AuthTokenService>()->processAuthToken(LmsApp->getDbSession(),
+			boost::asio::ip::address::from_string(env.clientAddress()),
+			authTokenUsage,
+			*authCookie,
+			true /* remove if found */)};
 	switch (res.state)
 	{
 		case ::Auth::AuthTokenService::AuthTokenProcessResult::State::NotFound:

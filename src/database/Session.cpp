@@ -35,7 +35,7 @@
 
 namespace Database {
 
-#define LMS_DATABASE_VERSION	5
+#define LMS_DATABASE_VERSION	6
 
 using Version = std::size_t;
 
@@ -80,7 +80,7 @@ Session::doDatabaseMigrationIfNeeded()
 {
 	auto uniqueTransaction {createUniqueTransaction()};
 
-	static const std::string outdatedMsg {"Outdated database, please rebuild it (delete the .db file and restart)"};
+	static const std::string outdatedMsg {"Outdated database, please rebuild it (delete the lms.db file and restart)"};
 
 	Version version;
 	try
@@ -98,6 +98,11 @@ Session::doDatabaseMigrationIfNeeded()
 
 	switch (version)
 	{
+		case 5:
+			_session.execute("ALTER TABLE auth_token ADD usage TEXT NOT NULL DEFAULT \"LmsUI\"");
+			_session.execute("ALTER TABLE auth_token DROP CONSTRAINT usage");
+			break;
+
 		default:
 			LMS_LOG(DB, ERROR) << "Database version " << version << " cannot be handled using migration";
 			throw LmsException {outdatedMsg};
@@ -214,7 +219,8 @@ Session::prepareTables()
 		_session.execute("CREATE INDEX IF NOT EXISTS artist_mbid_idx ON artist(mbid)");
 		_session.execute("CREATE INDEX IF NOT EXISTS auth_token_user_idx ON auth_token(user_id)");
 		_session.execute("CREATE INDEX IF NOT EXISTS auth_token_expiry_idx ON auth_token(expiry)");
-		_session.execute("CREATE INDEX IF NOT EXISTS auth_token_value_idx ON auth_token(value)");
+		_session.execute("CREATE INDEX IF NOT EXISTS auth_token_usage_idx ON auth_token(usage)");
+		_session.execute("CREATE INDEX IF NOT EXISTS auth_token_usage_value_idx ON auth_token(usage, value)");
 		_session.execute("CREATE INDEX IF NOT EXISTS cluster_name_idx ON cluster(name)");
 		_session.execute("CREATE INDEX IF NOT EXISTS cluster_cluster_type_idx ON cluster(cluster_type_id)");
 		_session.execute("CREATE INDEX IF NOT EXISTS cluster_type_name_idx ON cluster_type(name)");

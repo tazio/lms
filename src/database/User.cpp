@@ -29,8 +29,9 @@
 namespace Database {
 
 
-AuthToken::AuthToken(const std::string& value, const Wt::WDateTime& expiry, Wt::Dbo::ptr<User> user)
-: _value {value}
+AuthToken::AuthToken(const std::string& usage, const std::string& value, const Wt::WDateTime& expiry, Wt::Dbo::ptr<User> user)
+: _usage {usage}
+, _value {value}
 , _expiry {expiry}
 , _user {user}
 {
@@ -38,11 +39,11 @@ AuthToken::AuthToken(const std::string& value, const Wt::WDateTime& expiry, Wt::
 }
 
 AuthToken::pointer
-AuthToken::create(Session& session, const std::string& value, const Wt::WDateTime& expiry, Wt::Dbo::ptr<User> user)
+AuthToken::create(Session& session, const std::string& usage, const std::string& value, const Wt::WDateTime& expiry, Wt::Dbo::ptr<User> user)
 {
 	session.checkUniqueLocked();
 
-	auto res {session.getDboSession().add(std::make_unique<AuthToken>(value, expiry, user))};
+	auto res {session.getDboSession().add(std::make_unique<AuthToken>(usage, value, expiry, user))};
 
 	session.getDboSession().flush();
 
@@ -59,11 +60,12 @@ AuthToken::removeExpiredTokens(Session& session, const Wt::WDateTime& now)
 }
 
 AuthToken::pointer
-AuthToken::getByValue(Session& session, const std::string& value)
+AuthToken::getByValue(Session& session, const std::string& usage, const std::string& value)
 {
 	session.checkSharedLocked();
 
 	return session.getDboSession().find<AuthToken>()
+		.where("usage = ?").bind(usage)
 		.where("value = ?").bind(value);
 }
 

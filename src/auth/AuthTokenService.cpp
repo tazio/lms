@@ -38,7 +38,7 @@ AuthTokenService::AuthTokenService(std::size_t maxThrottlerEntries)
 }
 
 std::string
-AuthTokenService::createAuthToken(Database::Session& session, Database::IdType userId, const Wt::WDateTime& expiry)
+AuthTokenService::createAuthToken(Database::Session& session, Database::IdType userId, const std::string& usage, const Wt::WDateTime& expiry)
 {
 	const std::string secret {Wt::WRandom::generateId(64)};
 
@@ -48,7 +48,7 @@ AuthTokenService::createAuthToken(Database::Session& session, Database::IdType u
 	if (!user)
 		throw LmsException {"User deleted"};
 
-	Database::AuthToken::pointer authToken {Database::AuthToken::create(session, secret, expiry, user)};
+	Database::AuthToken::pointer authToken {Database::AuthToken::create(session, usage, secret, expiry, user)};
 
 	LMS_LOG(UI, DEBUG) << "Created auth token for user '" << user->getLoginName() << "', expiry = " << expiry.toString();
 
@@ -60,11 +60,11 @@ AuthTokenService::createAuthToken(Database::Session& session, Database::IdType u
 
 static
 boost::optional<AuthTokenService::AuthTokenProcessResult::AuthTokenInfo>
-processAuthToken(Database::Session& session, const std::string& tokenValue)
+processAuthToken(Database::Session& session, const std::string& tokenUsage, const std::string& tokenValue, bool removeIfFound)
 {
 	auto transaction {session.createUniqueTransaction()};
 
-	Database::AuthToken::pointer authToken {Database::AuthToken::getByValue(session, tokenValue)};
+	Database::AuthToken::pointer authToken {Database::AuthToken::getByValue(session, tokenUsage, tokenValue)};
 	if (!authToken)
 		return boost::none;
 
@@ -77,14 +77,19 @@ processAuthToken(Database::Session& session, const std::string& tokenValue)
 	LMS_LOG(UI, DEBUG) << "Found auth token for user '" << authToken->getUser()->getLoginName() << "'!";
 
 	AuthTokenService::AuthTokenProcessResult::AuthTokenInfo res {authToken->getUser().id(), authToken->getExpiry()};
-	authToken.remove();
+	if (removeIfFound)
+		authToken.remove();
 
 	return res;
 }
 
 
 AuthTokenService::AuthTokenProcessResult
-AuthTokenService::processAuthToken(Database::Session& session, const boost::asio::ip::address& clientAddress, const std::string& tokenValue)
+AuthTokenService::processAuthToken(Database::Session& session,
+		const boost::asio::ip::address& clientAddress,
+		const std::string& tokenUsage,
+		const std::string& tokenValue,
+		bool removeIfFound)
 {
 	// Do not waste too much resource on brute force attacks (optim)
 	{
@@ -94,7 +99,7 @@ AuthTokenService::processAuthToken(Database::Session& session, const boost::asio
 			return AuthTokenProcessResult {AuthTokenProcessResult::State::Throttled};
 	}
 
-	auto res {Auth::processAuthToken(session, tokenValue)};
+	auto res {Auth::processAuthToken(session, tokenUsage, tokenValue, removeIfFound)};
 	{
 		std::unique_lock<std::shared_timed_mutex> lock {_mutex};
 

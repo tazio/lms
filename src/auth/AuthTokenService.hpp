@@ -74,8 +74,16 @@ namespace Auth {
 			};
 
 			// Removed if found
-			AuthTokenProcessResult	processAuthToken(Database::Session& session, const boost::asio::ip::address& clientAddress, const std::string& tokenValue);
-			std::string		createAuthToken(Database::Session& session, Database::IdType userid, const Wt::WDateTime& expiry);
+			AuthTokenProcessResult processAuthToken(Database::Session& session,
+					const boost::asio::ip::address& clientAddress,
+					const std::string& usage,
+					const std::string& tokenValue,
+					bool removeTokenIfFound);
+
+			std::string createAuthToken(Database::Session& session,
+					Database::IdType userid,
+					const std::string& usage,
+					const Wt::WDateTime& expiry);
 
 		private:
 
