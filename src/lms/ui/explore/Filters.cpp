@@ -41,7 +41,7 @@ Filters::showDialog()
 	Wt::WComboBox* typeCombo = container->bindNew<Wt::WComboBox>("type");
 	Wt::WComboBox* valueCombo = container->bindNew<Wt::WComboBox>("value");
 
-	Wt::WPushButton* addBtn = container->bindNew<Wt::WPushButton>("add-btn", Wt::WString::tr("Lms.add"));
+	Wt::WPushButton* addBtn = container->bindNew<Wt::WPushButton>("add-btn", Wt::WString::tr("Lms.Explore.add-filter"));
 	addBtn->clicked().connect(dialog.get(), &Wt::WDialog::accept);
 
 	Wt::WPushButton* cancelBtn = container->bindNew<Wt::WPushButton>("cancel-btn", Wt::WString::tr("Lms.cancel"));
@@ -160,7 +160,7 @@ Filters::Filters()
 	addFunction("tr", &Functions::tr);
 
 	// Filters
-	Wt::WPushButton *addFilterBtn = bindNew<Wt::WPushButton>("add-filter", Wt::WText::tr("Lms.add"));
+	Wt::WPushButton *addFilterBtn = bindNew<Wt::WPushButton>("add-filter", Wt::WText::tr("Lms.Explore.add-filter"));
 	addFilterBtn->clicked().connect(this, &Filters::showDialog);
 
 	_filters = bindNew<Wt::WContainerWidget>("clusters");

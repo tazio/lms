@@ -3,12 +3,13 @@
 
 <message id="Lms.Explore.template">
 	<div class="row">
-		<div class="col-md-8">
-			${contents class="Lms-explore-contents"}
-		</div>
-		<div class="col-md-4">
+		<div class="col-md-12">
 			${filters class="well well-sm"}
-			${info class="well well-sm"}
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-md-12">
+			${contents class="Lms-explore-contents"}
 		</div>
 	</div>
 </message>
@@ -17,8 +18,7 @@
 <message id="Lms.Explore.template.play-btn"><i class="fa fa-play-circle Lms-explore-btn Lms-control-btn"></i></message>
 
 <message id="Lms.Explore.template.filters">
-	<h3>${tr:Lms.Explore.filters} ${add-filter class="btn-primary"}</h3>
-	${clusters}
+	${add-filter class="btn-primary btn-xs"} ${clusters class="Lms-explore-clusters"}
 </message>
 
 <message id="Lms.Explore.template.add-filter">

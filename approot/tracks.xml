@@ -4,7 +4,7 @@
 <!--FORMS message blocks-->
 
 <message id="Lms.Explore.Tracks.template">
-	<div class="page-header">
+	<div class="Lms-header">
 		<h2>${tr:Lms.Explore.tracks}</h2>
 		${play-btn}${add-btn}
 	</div>

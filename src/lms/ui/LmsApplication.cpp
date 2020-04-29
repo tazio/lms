@@ -57,6 +57,8 @@
 
 namespace UserInterface {
 
+static constexpr const char* defaultPath {"/artists"};
+
 std::unique_ptr<Wt::WApplication>
 LmsApplication::create(const Wt::WEnvironment& env, Database::Db& db, LmsApplicationGroupContainer& appGroups)
 {
@@ -381,7 +383,7 @@ handlePathChange(Wt::WStackedWidget* stack, bool isAdmin)
 		}
 	}
 
-	wApp->setInternalPath("/artists", true);
+	wApp->setInternalPath(defaultPath, true);
 }
 
 LmsApplicationGroup&
@@ -438,7 +440,7 @@ LmsApplication::createHome()
 
 	// Navbar
 	Wt::WNavigationBar* navbar {main->bindNew<Wt::WNavigationBar>("navbar-top")};
-	navbar->setTitle("LMS", Wt::WLink {Wt::LinkType::InternalPath, "/artists"});
+	navbar->setTitle("LMS", Wt::WLink {Wt::LinkType::InternalPath, defaultPath});
 	navbar->setResponsive(true);
 
 	// MediaPlayer

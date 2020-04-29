@@ -3,7 +3,7 @@
 <!--FORMS message blocks-->
 
 <message id="Lms.Explore.Artists.template">
-	<div class="page-header">
+	<div class="Lms-header">
 		<h2>${tr:Lms.Explore.artists}</h2>
 	</div>
 	<div class="row">
