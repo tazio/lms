@@ -12,12 +12,6 @@
 				${link-type}
 			</div>
 		</div>
-		<div class="col-xs-12 col-sm-9">
-			<div class="input-group Lms-explore-artists-input">
-				<span class="input-group-addon"><i class="fa fa-search"></i></span>
-				${search}
-			</div>
-		</div>
 	</div>
 	${artists}
 	<div class="row">

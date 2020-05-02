@@ -19,12 +19,18 @@
 
 #include "ReleasesView.hpp"
 
+#include <algorithm>
+
 #include <Wt/WAnchor.h>
 #include <Wt/WImage.h>
+#include <Wt/WMenu.h>
+#include <Wt/WSplitButton.h>
 #include <Wt/WText.h>
 #include <Wt/WTemplate.h>
 
 #include "database/Release.hpp"
+#include "database/User.hpp"
+#include "database/TrackList.hpp"
 
 #include "utils/Logger.hpp"
 #include "utils/String.hpp"
@@ -44,9 +50,22 @@ _filters(filters)
 {
 	addFunction("tr", &Wt::WTemplate::Functions::tr);
 
-	_search = bindNew<Wt::WLineEdit>("search");
-	_search->setPlaceholderText(Wt::WString::tr("Lms.Explore.search-placeholder"));
-	_search->textInput().connect(this, &Releases::refresh);
+	{
+		auto* menu {bindNew<Wt::WMenu>("mode")};
+
+		auto addItem = [this](Wt::WMenu& menu,const Wt::WString& str, Mode mode)
+		{
+			auto* item {menu.addItem(str)};
+			item->triggered().connect([this, mode] { refreshView(mode); });
+			item->clicked().connect([this, mode] { refreshView(mode); });
+		};
+
+		addItem(*menu, Wt::WString::tr("Lms.Explore.random"), Mode::Random);
+		addItem(*menu, Wt::WString::tr("Lms.Explore.recently-played"), Mode::RecentlyPlayed);
+		addItem(*menu, Wt::WString::tr("Lms.Explore.mostly-played"), Mode::MostlyPlayed);
+		addItem(*menu, Wt::WString::tr("Lms.Explore.recently-added"), Mode::RecentlyAdded);
+		addItem(*menu, Wt::WString::tr("Lms.Explore.all"), Mode::All);
+	}
 
 	Wt::WText* playBtn {bindNew<Wt::WText>("play-btn", Wt::WString::tr("Lms.Explore.template.play-btn"), Wt::TextFormat::XHTML)};
 	playBtn->clicked().connect([this]
@@ -67,24 +86,30 @@ _filters(filters)
 		addSome();
 	});
 
-	refresh();
+	refreshView(defaultMode);
 
-	filters->updated().connect(this, &Releases::refresh);
+	filters->updated().connect([this] { refreshView(); });
 }
 
 void
-Releases::refresh()
+Releases::refreshView()
 {
 	_container->clear();
 	addSome();
 }
 
 void
+Releases::refreshView(Mode mode)
+{
+	_mode = mode;
+	refreshView();
+}
+
+void
 Releases::addSome()
 {
 	bool moreResults {};
-
-	const auto releasesId {getReleases(_container->count(), 20, moreResults)};
+	const auto releasesId {getReleases(Range {static_cast<std::size_t>(_container->count()), batchSize}, moreResults)};
 	for (const Database::IdType releaseId : releasesId )
 	{
 		auto transaction {LmsApp->getDbSession().createSharedTransaction()};
@@ -97,7 +122,6 @@ Releases::addSome()
 		Wt::WAnchor* anchor = entry->bindWidget("cover", LmsApplication::createReleaseAnchor(release, false));
 		auto cover = std::make_unique<Wt::WImage>();
 		cover->setImageLink(LmsApp->getImageResource()->getReleaseUrl(release.id(), 128));
-		// Some images may not be square
 		cover->setStyleClass("Lms-cover-medium");
 		anchor->setImage(std::move(cover));
 
@@ -135,17 +159,56 @@ Releases::addSome()
 }
 
 std::vector<Database::IdType>
-Releases::getReleases(std::optional<std::size_t> offset, std::optional<std::size_t> limit, bool& moreResults) const
+Releases::getReleases(std::optional<Database::Range> range, bool& moreResults) const
 {
-	const auto searchKeywords {StringUtils::splitString(_search->text().toUTF8(), " ")};
+	std::vector<Release::pointer> releases;
 
 	auto transaction {LmsApp->getDbSession().createSharedTransaction()};
 
-	const auto releases {Release::getByFilter(LmsApp->getDbSession(), _filters->getClusterIds(), searchKeywords, offset, limit, moreResults)};
+	const std::optional<std::size_t> modeLimit{maxItemsPerMode[_mode]};
+	if (modeLimit)
+	{
+		if (range)
+			range->limit = std::min(*modeLimit - range->offset, range->offset + range->limit);
+		else
+			range = Range {0, *modeLimit};
+	}
+
+	switch (_mode)
+	{
+		case Mode::Random:
+			releases = Release::getAllRandom(LmsApp->getDbSession(), _filters->getClusterIds(), 5);
+			break;
+
+		case Mode::RecentlyPlayed:
+			releases = LmsApp->getUser()->getPlayedTrackList(LmsApp->getDbSession())->getReleasesReverse(_filters->getClusterIds(), range, moreResults);
+			break;
+
+		case Mode::MostlyPlayed:
+			releases = LmsApp->getUser()->getPlayedTrackList(LmsApp->getDbSession())->getTopReleases(_filters->getClusterIds(), range, moreResults);
+			break;
+
+		case Mode::RecentlyAdded:
+			releases = Release::getLastAdded(LmsApp->getDbSession(), std::nullopt, _filters->getClusterIds(), range, moreResults);
+			break;
+
+		case Mode::All:
+			releases = Release::getByFilter(LmsApp->getDbSession(), _filters->getClusterIds(), {}, range, moreResults);
+			break;
+
+		default:
+			releases = Release::getByFilter(LmsApp->getDbSession(), _filters->getClusterIds(), {}, range, moreResults);
+	}
 
 	std::vector<Database::IdType> res;
-	for (const Database::Release::pointer& release : releases)
-		res.push_back(release.id());
+	res.reserve(releases.size());
+	std::transform(std::cbegin(releases), std::cend(releases), std::back_inserter(res), [](const Release::pointer& release) { return release.id(); });
+
+	if (range && modeLimit && (range->offset + range->limit == *modeLimit))
+		moreResults = false;
+
+//	if (_mode == Mode::Random)
+//		_randomReleases = res;
 
 	return res;
 }
@@ -154,7 +217,7 @@ std::vector<Database::IdType>
 Releases::getReleases() const
 {
 	bool moreResults;
-	return getReleases({}, {}, moreResults);
+	return getReleases(std::nullopt, moreResults);
 }
 
 } // namespace UserInterface

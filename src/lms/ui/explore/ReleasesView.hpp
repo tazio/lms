@@ -22,7 +22,6 @@
 #include <optional>
 
 #include <Wt/WContainerWidget.h>
-#include <Wt/WLineEdit.h>
 #include <Wt/WPushButton.h>
 #include <Wt/WTemplate.h>
 
@@ -41,15 +40,38 @@ class Releases : public Wt::WTemplate
 		Wt::Signal<const std::vector<Database::IdType>&> releasesPlay;
 
 	private:
-		void refresh();
+
+		enum class Mode
+		{
+			Random,
+			RecentlyPlayed,
+			RecentlyAdded,
+			MostlyPlayed,
+			All
+		};
+
+		void refreshView();
+		void refreshView(Mode mode);
 		void addSome();
 
-		std::vector<Database::IdType> getReleases(std::optional<std::size_t> offset, std::optional<std::size_t> limit, bool& moreResults) const;
+		std::vector<Database::IdType> getReleases(std::optional<Database::Range> range, bool& moreResults) const;
 		std::vector<Database::IdType> getReleases() const;
 
+		static constexpr Mode defaultMode {Mode::Random};
+		static constexpr std::size_t batchSize {20};
+		static inline std::unordered_map<Mode, std::optional<std::size_t>> maxItemsPerMode
+		{
+			{Mode::Random, batchSize},
+			{Mode::RecentlyPlayed, 64},
+			{Mode::RecentlyAdded, 32},
+			{Mode::MostlyPlayed, 32},
+			{Mode::All, std::nullopt},
+		};
+
 		Filters* _filters;
+		Mode _mode {defaultMode};
+		std::vector<Database::IdType> _randomReleases; // releases currently displayed in random mode
 		Wt::WPushButton* _showMore;
-		Wt::WLineEdit* _search;
 		Wt::WContainerWidget* _container;
 };
 

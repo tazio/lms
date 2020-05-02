@@ -34,7 +34,7 @@ namespace Database {
 
 Track::Track(const std::filesystem::path& p)
 :
-_filePath( p.string() )
+_filePath {p.string()}
 {
 }
 

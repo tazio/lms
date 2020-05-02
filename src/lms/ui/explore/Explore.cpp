@@ -36,7 +36,6 @@
 #include "ArtistView.hpp"
 #include "Filters.hpp"
 #include "ReleaseInfoView.hpp"
-#include "ReleasesInfoView.hpp"
 #include "ReleasesView.hpp"
 #include "ReleaseView.hpp"
 #include "TracksInfoView.hpp"
@@ -161,9 +160,6 @@ Explore::Explore()
 
 	auto releaseInfo = std::make_unique<ReleaseInfo>();
 	infoStack->addWidget(std::move(releaseInfo));
-
-	auto releasesInfo = std::make_unique<ReleasesInfo>();
-	infoStack->addWidget(std::move(releasesInfo));
 
 	auto tracksInfo = std::make_unique<TracksInfo>();
 	infoStack->addWidget(std::move(tracksInfo));

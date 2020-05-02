@@ -28,6 +28,7 @@
 #include "database/Session.hpp"
 #include "database/User.hpp"
 #include "database/Track.hpp"
+#include "SqlQuery.hpp"
 
 namespace Database {
 
@@ -106,6 +107,23 @@ TrackList::getById(Session& session, IdType id)
 	return session.getDboSession().find<TrackList>().where("id = ?").bind(id);
 }
 
+std::size_t
+TrackList::getCount() const
+{
+	return _entries.size();
+}
+
+Wt::Dbo::ptr<TrackListEntry>
+TrackList::getEntry(std::size_t pos) const
+{
+	Wt::Dbo::ptr<TrackListEntry> res;
+
+	auto entries = getEntries(pos, 1);
+	if (!entries.empty())
+		res = entries.front();
+
+	return res;
+}
 
 std::vector<Wt::Dbo::ptr<TrackListEntry>>
 TrackList::getEntries(std::optional<std::size_t> offset, std::optional<std::size_t> size) const
@@ -139,22 +157,60 @@ TrackList::getEntriesReverse(std::optional<std::size_t> offset, std::optional<st
 	return std::vector<Wt::Dbo::ptr<TrackListEntry>>(entries.begin(), entries.end());
 }
 
-Wt::Dbo::ptr<TrackListEntry>
-TrackList::getEntry(std::size_t pos) const
+static
+Wt::Dbo::Query<Release::pointer>
+getReleasesQuery(Wt::Dbo::Session& session, IdType tracklistId, const std::set<IdType>& clusterIds)
 {
-	Wt::Dbo::ptr<TrackListEntry> res;
+	auto query {session.query<Release::pointer>("SELECT r from release r INNER JOIN track t ON t.release_id = r.id INNER JOIN tracklist_entry p_e ON p_e.track_id = t.id INNER JOIN tracklist p ON p.id = p_e.tracklist_id")};
 
-	auto entries = getEntries(pos, 1);
-	if (!entries.empty())
-		res = entries.front();
+	query.where("p.id = ?").bind(tracklistId);
 
-	return res;
+	if (!clusterIds.empty())
+	{
+		std::ostringstream oss;
+		oss << "r.id IN (SELECT DISTINCT r.id FROM release r"
+				" INNER JOIN track t ON t.release_id = r.id"
+				" INNER JOIN cluster c ON c.id = t_c.cluster_id"
+				" INNER JOIN track_cluster t_c ON t_c.track_id = t.id";
+
+		WhereClause clusterClause;
+		for (auto id : clusterIds)
+		{
+			clusterClause.Or(WhereClause("c.id = ?")).bind(std::to_string(id));
+			query.bind(id);
+		}
+
+		oss << " " << clusterClause.get();
+		oss << " GROUP BY t.id HAVING COUNT(*) = " << clusterIds.size() << ")";
+
+		query.where(oss.str());
+	}
+
+	return query;
 }
 
-std::size_t
-TrackList::getCount() const
+std::vector<Wt::Dbo::ptr<Release>>
+TrackList::getReleasesReverse(const std::set<IdType>& clusterIds, std::optional<Range> range, bool& moreResults) const
 {
-	return _entries.size();
+	assert(session());
+	assert(IdIsValid(self()->id()));
+
+	Wt::Dbo::collection<Release::pointer> collection = getReleasesQuery(*session(), self()->id(), clusterIds)
+		.orderBy("p_e.id DESC")
+		.groupBy("r.id")
+		.limit(range ? static_cast<int>(range->limit) + 1 : -1)
+		.offset(range ? static_cast<int>(range->offset) : -1);
+
+	auto res {std::vector<Release::pointer>(collection.begin(), collection.end())};
+	if (range && res.size() == static_cast<std::size_t>(range->limit) + 1)
+	{
+		moreResults = true;
+		res.pop_back();
+	}
+	else
+		moreResults = false;
+
+	return res;
 }
 
 std::vector<Wt::Dbo::ptr<Cluster>>
@@ -235,48 +291,104 @@ TrackList::getDuration() const
 }
 
 std::vector<Artist::pointer>
-TrackList::getTopArtists(std::size_t limit) const
+TrackList::getTopArtists(std::optional<std::size_t> offset, std::optional<std::size_t> limit, bool& moreResults) const
 {
 	assert(session());
 	assert(IdIsValid(self()->id()));
 
-	Wt::Dbo::collection<Artist::pointer> res = session()->query<Artist::pointer>("SELECT a from artist a INNER JOIN track t ON t.id = t_a_l.track_id INNER JOIN track_artist_link t_a_l ON t_a_l.artist_id = a.id INNER JOIN tracklist_entry p_e ON p_e.track_id = t.id INNER JOIN tracklist p ON p.id = p_e.tracklist_id")
+	Wt::Dbo::collection<Artist::pointer> collection = session()->query<Artist::pointer>("SELECT a from artist a INNER JOIN track t ON t.id = t_a_l.track_id INNER JOIN track_artist_link t_a_l ON t_a_l.artist_id = a.id INNER JOIN tracklist_entry p_e ON p_e.track_id = t.id INNER JOIN tracklist p ON p.id = p_e.tracklist_id")
 		.where("p.id = ?").bind(self()->id())
 		.groupBy("a.id")
 		.orderBy("COUNT(a.id) DESC")
-		.limit(static_cast<int>(limit));
+		.limit(limit ? static_cast<int>(*limit) + 1 : -1)
+		.offset(offset ? static_cast<int>(*offset) : -1);
 
-	return std::vector<Artist::pointer>(res.begin(), res.end());
+	auto res {std::vector<Artist::pointer>(collection.begin(), collection.end())};
+	if (limit && res.size() == static_cast<std::size_t>(*limit) + 1)
+	{
+		moreResults = true;
+		res.pop_back();
+	}
+	else
+		moreResults = false;
+
+	return res;
 }
 
 std::vector<Release::pointer>
-TrackList::getTopReleases(std::size_t limit) const
+TrackList::getTopReleases(const std::set<IdType>& clusterIds, std::optional<Range> range, bool& moreResults) const
 {
 	assert(session());
 	assert(IdIsValid(self()->id()));
 
-	Wt::Dbo::collection<Release::pointer> res = session()->query<Release::pointer>("SELECT r from release r INNER JOIN track t ON t.release_id = r.id INNER JOIN tracklist_entry p_e ON p_e.track_id = t.id INNER JOIN tracklist p ON p.id = p_e.tracklist_id")
-		.where("p.id = ?").bind(self()->id())
-		.groupBy("r.id")
-		.orderBy("COUNT(r.id) DESC")
-		.limit(static_cast<int>(limit));
+	auto query {session()->query<Release::pointer>("SELECT r from release r INNER JOIN track t ON t.release_id = r.id INNER JOIN tracklist_entry p_e ON p_e.track_id = t.id INNER JOIN tracklist p ON p.id = p_e.tracklist_id")};
 
-	return std::vector<Release::pointer>(res.begin(), res.end());
+	query.where("p.id = ?").bind(self()->id());
+
+	if (!clusterIds.empty())
+	{
+getReleasesQuery(Wt::Dbo::Session& session, IdType tracklistId, const std::set<IdType>& clusterIds)
+		std::ostringstream oss;
+		oss << "r.id IN (SELECT DISTINCT r.id FROM release r"
+				" INNER JOIN track t ON t.release_id = r.id"
+				" INNER JOIN cluster c ON c.id = t_c.cluster_id"
+				" INNER JOIN track_cluster t_c ON t_c.track_id = t.id";
+
+		WhereClause clusterClause;
+		for (auto id : clusterIds)
+		{
+			clusterClause.Or(WhereClause("c.id = ?")).bind(std::to_string(id));
+			query.bind(id);
+		}
+
+		oss << " " << clusterClause.get();
+		oss << " GROUP BY t.id HAVING COUNT(*) = " << clusterIds.size() << ")";
+
+		query.where(oss.str());
+	}
+
+	Wt::Dbo::collection<Release::pointer> collection = query
+		.orderBy("COUNT(r.id) DESC")
+		.groupBy("r.id")
+		.limit(range ? static_cast<int>(range->limit) + 1 : -1)
+		.offset(range ? static_cast<int>(range->offset) : -1);
+
+	auto res {std::vector<Release::pointer>(collection.begin(), collection.end())};
+
+	if (range && res.size() == static_cast<std::size_t>(range->limit) + 1)
+	{
+		moreResults = true;
+		res.pop_back();
+	}
+	else
+		moreResults = false;
+
+	return res;
 }
 
 std::vector<Track::pointer>
-TrackList::getTopTracks(std::size_t limit) const
+TrackList::getTopTracks(std::optional<std::size_t> offset, std::optional<std::size_t> limit, bool& moreResults) const
 {
 	assert(session());
 	assert(IdIsValid(self()->id()));
 
-	Wt::Dbo::collection<Track::pointer> res = session()->query<Track::pointer>("SELECT t from track t INNER JOIN tracklist_entry p_e ON p_e.track_id = t.id INNER JOIN tracklist p ON p.id = p_e.tracklist_id")
+	Wt::Dbo::collection<Track::pointer> collection = session()->query<Track::pointer>("SELECT t from track t INNER JOIN tracklist_entry p_e ON p_e.track_id = t.id INNER JOIN tracklist p ON p.id = p_e.tracklist_id")
 		.where("p.id = ?").bind(self()->id())
 		.groupBy("t.id")
 		.orderBy("COUNT(t.id) DESC")
-		.limit(static_cast<int>(limit));
+		.limit(limit ? static_cast<int>(*limit) + 1 : -1)
+		.offset(offset ? static_cast<int>(*offset) : -1);
 
-	return std::vector<Track::pointer>(res.begin(), res.end());
+	auto res {std::vector<Track::pointer>(collection.begin(), collection.end())};
+	if (limit && res.size() == static_cast<std::size_t>(*limit) + 1)
+	{
+		moreResults = true;
+		res.pop_back();
+	}
+	else
+		moreResults = false;
+
+	return res;
 }
 
 TrackListEntry::TrackListEntry(Wt::Dbo::ptr<Track> track, Wt::Dbo::ptr<TrackList> tracklist)

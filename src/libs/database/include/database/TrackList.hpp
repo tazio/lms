@@ -21,6 +21,7 @@
 
 #include <optional>
 #include <string>
+#include <set>
 
 #include <Wt/Dbo/Dbo.h>
 
@@ -51,9 +52,9 @@ class TrackList : public Wt::Dbo::Dbo<TrackList>
 		TrackList(const std::string& name, Type type, bool isPublic, Wt::Dbo::ptr<User> user);
 
 		// Stats utility
-		std::vector<Wt::Dbo::ptr<Artist>> getTopArtists(std::size_t limit = 1) const;
-		std::vector<Wt::Dbo::ptr<Release>> getTopReleases(std::size_t limit = 1) const;
-		std::vector<Wt::Dbo::ptr<Track>> getTopTracks(std::size_t limit = 1) const;
+		std::vector<Wt::Dbo::ptr<Artist>> getTopArtists(std::optional<std::size_t> offset, std::optional<std::size_t> limit, bool& moreResults) const;
+		std::vector<Wt::Dbo::ptr<Release>> getTopReleases(const std::set<IdType>& clusterIds, std::optional<Range> range, bool& moreResults) const;
+		std::vector<Wt::Dbo::ptr<Track>> getTopTracks(std::optional<std::size_t> offset, std::optional<std::size_t> limit, bool& moreResults) const;
 
 		// Search utility
 		static pointer	get(Session& session, const std::string& name, Type type, Wt::Dbo::ptr<User> user);
@@ -81,6 +82,8 @@ class TrackList : public Wt::Dbo::Dbo<TrackList>
 		Wt::Dbo::ptr<TrackListEntry> getEntry(std::size_t pos) const;
 		std::vector<Wt::Dbo::ptr<TrackListEntry>> getEntries(std::optional<std::size_t> offset = {}, std::optional<std::size_t> size = {}) const;
 		std::vector<Wt::Dbo::ptr<TrackListEntry>> getEntriesReverse(std::optional<std::size_t>  offset = {}, std::optional<std::size_t> size = {}) const;
+
+		std::vector<Wt::Dbo::ptr<Release>> getReleasesReverse(const std::set<IdType>& clusterIds, std::optional<Range> range, bool& moreResults) const;
 
 		std::vector<IdType> getTrackIds() const;
 

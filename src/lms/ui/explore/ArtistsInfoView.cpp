@@ -72,7 +72,8 @@ ArtistsInfo::refreshMostPlayed()
 {
 	auto transaction {LmsApp->getDbSession().createSharedTransaction()};
 
-	const std::vector<Database::Artist::pointer> artists {LmsApp->getUser()->getPlayedTrackList(LmsApp->getDbSession())->getTopArtists(5)};
+	bool moreResults {};
+	const std::vector<Database::Artist::pointer> artists {LmsApp->getUser()->getPlayedTrackList(LmsApp->getDbSession())->getTopArtists(0, 5, moreResults)};
 
 	_mostPlayedContainer->clear();
 	for (const Database::Artist::pointer& artist : artists)

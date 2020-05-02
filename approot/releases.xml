@@ -4,20 +4,8 @@
 
 <message id="Lms.Explore.Releases.template">
 	<div class="Lms-header">
-		<ul class="nav nav-pills">
-			<li class="active"><a href="#">All</a></li>
-			<li><a href="#">Top</a></li>
-			<li><a href="#">Recent</a></li>
-			<li><a href="#">Random</a></li>
-		</ul>
-		<br/>
-		${play-btn}${add-btn}
-	</div>
-	<div class="form-group">
-		<div class="input-group">
-			<span class="input-group-addon"><i class="fa fa-search"></i></span>
-			${search}
-		</div>
+		${mode class="nav nav-pills"}
+		<div style="margin-top:8px">${play-btn}${add-btn}</div>
 	</div>
 	${releases}
 	<div class="row">

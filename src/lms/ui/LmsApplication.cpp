@@ -50,7 +50,6 @@
 #include "LmsApplicationException.hpp"
 #include "LmsTheme.hpp"
 #include "MediaPlayer.hpp"
-#include "PlayHistoryView.hpp"
 #include "PlayQueueView.hpp"
 #include "SettingsView.hpp"
 
@@ -137,7 +136,6 @@ LmsApplication::LmsApplication(const Wt::WEnvironment& env,
 	messageResourceBundle().use(appRoot() + "mediaplayer");
 	messageResourceBundle().use(appRoot() + "messages");
 	messageResourceBundle().use(appRoot() + "playqueue");
-	messageResourceBundle().use(appRoot() + "playhistory");
 	messageResourceBundle().use(appRoot() + "release");
 	messageResourceBundle().use(appRoot() + "releaseinfo");
 	messageResourceBundle().use(appRoot() + "releaselink");
@@ -339,7 +337,6 @@ enum IdxRoot
 {
 	IdxExplore	= 0,
 	IdxPlayQueue,
-	IdxPlayHistory,
 	IdxSettings,
 	IdxAdminDatabase,
 	IdxAdminUsers,
@@ -362,7 +359,6 @@ handlePathChange(Wt::WStackedWidget* stack, bool isAdmin)
 		{ "/release",		IdxExplore,		false },
 		{ "/tracks",		IdxExplore,		false },
 		{ "/playqueue",		IdxPlayQueue,		false },
-		{ "/playhistory",	IdxPlayHistory,		false },
 		{ "/settings",		IdxSettings,		false },
 		{ "/admin/database",	IdxAdminDatabase,	true },
 		{ "/admin/users",	IdxAdminUsers,		true },
@@ -467,11 +463,6 @@ LmsApplication::createHome()
 		menuItem->setLink(Wt::WLink(Wt::LinkType::InternalPath, "/playqueue"));
 		menuItem->setSelectable(false);
 	}
-	{
-		auto menuItem = menu->insertItem(4, Wt::WString::tr("Lms.PlayHistory.playhistory"));
-		menuItem->setLink(Wt::WLink(Wt::LinkType::InternalPath, "/playhistory"));
-		menuItem->setSelectable(false);
-	}
 
 	Wt::WMenu* rightMenu = navbar->addMenu(std::make_unique<Wt::WMenu>(), Wt::AlignmentFlag::Right);
 	std::size_t itemCounter = 0;
@@ -510,7 +501,6 @@ LmsApplication::createHome()
 
 	Explore* explore = mainStack->addNew<Explore>();
 	PlayQueue* playqueue = mainStack->addNew<PlayQueue>();
-	mainStack->addNew<PlayHistory>();
 	mainStack->addNew<SettingsView>();
 
 	// Admin stuff
@@ -605,7 +595,7 @@ LmsApplication::createHome()
 	});
 
 	// Events from Application group
-	_events.appOpen.connect([=] (LmsApplicationInfo)
+	_events.appOpen.connect([=]
 	{
 		// Only one active session by user
 		if (!LmsApp->isUserDemo())

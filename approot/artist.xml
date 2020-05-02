@@ -3,7 +3,7 @@
 <!--FORMS message blocks-->
 
 <message id="Lms.Explore.Artist.template">
-	<div class="page-header">
+	<div class="Lms-header">
 		<h2><div class="Lms-artistname text-primary">${name}</div></h2>
 		${clusters}
 		${play-btn}${add-btn}

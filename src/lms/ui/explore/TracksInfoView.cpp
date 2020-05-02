@@ -87,7 +87,9 @@ void
 TracksInfo::refreshMostPlayed()
 {
 	auto transaction {LmsApp->getDbSession().createSharedTransaction()};
-	const auto tracks {LmsApp->getUser()->getPlayedTrackList(LmsApp->getDbSession())->getTopTracks(5)};
+
+	bool moreResults;
+	const auto tracks {LmsApp->getUser()->getPlayedTrackList(LmsApp->getDbSession())->getTopTracks(0, 5, moreResults)};
 
 	_mostPlayedContainer->clear();
 	addEntries(_mostPlayedContainer, tracks);

@@ -7,7 +7,6 @@ add_executable(lms
 	ui/LmsTheme.cpp
 	ui/MediaPlayer.cpp
 	ui/PlayQueueView.cpp
-	ui/PlayHistoryView.cpp
 	ui/SettingsView.cpp
 	ui/TrackStringUtils.cpp
 	ui/admin/DatabaseSettingsView.cpp
@@ -25,7 +24,6 @@ add_executable(lms
 	ui/explore/Filters.cpp
 	ui/explore/ReleaseInfoView.cpp
 	ui/explore/ReleaseLink.cpp
-	ui/explore/ReleasesInfoView.cpp
 	ui/explore/ReleasesView.cpp
 	ui/explore/ReleaseView.cpp
 	ui/explore/TracksInfoView.cpp

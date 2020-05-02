@@ -100,9 +100,14 @@
 
 <!--Explore-->
 <message id="Lms.Explore.add-filter">Add filter</message>
+<message id="Lms.Explore.all">All</message>
 <message id="Lms.Explore.artists">Artists</message>
 <message id="Lms.Explore.filter-added">Filter added</message>
 <message id="Lms.Explore.filters">Filters</message>
+<message id="Lms.Explore.mostly-played">Mostly played</message>
+<message id="Lms.Explore.random">Random</message>
+<message id="Lms.Explore.recently-added">Recently added</message>
+<message id="Lms.Explore.recently-played">Recently played</message>
 <message id="Lms.Explore.releases">Albums</message>
 <message id="Lms.Explore.search-placeholder">Search...</message>
 <message id="Lms.Explore.show-more">Show more</message>
@@ -118,21 +123,11 @@
 <message id="Lms.Explore.Artists.linktype-all">All artists</message>
 <message id="Lms.Explore.Artists.linktype-artist">Track artists</message>
 <message id="Lms.Explore.Artists.linktype-releaseartist">Album artists</message>
-<message id="Lms.Explore.ArtistsInfo.recently-added">Recently added</message>
-<message id="Lms.Explore.ArtistsInfo.most-played">Top artists</message>
 
 <!--Explore:Release-->
 <message id="Lms.Explore.ReleaseInfo.similar-releases">Similar albums</message>
 <message id="Lms.Explore.Release.copyright">Copyright</message>
 <message id="Lms.Explore.Release.disc">Disc {1}</message>
-
-<!--Explore:Releases-->
-<message id="Lms.Explore.ReleasesInfo.recently-added">Recently added</message>
-<message id="Lms.Explore.ReleasesInfo.most-played">Top albums</message>
-
-<!--Explore:Tracks-->
-<message id="Lms.Explore.TracksInfo.recently-added">Recently added</message>
-<message id="Lms.Explore.TracksInfo.most-played">Top tracks</message>
 
 
 <!--Playqueue-->

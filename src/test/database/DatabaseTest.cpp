@@ -48,6 +48,11 @@ using namespace Database;
 				throw std::runtime_error {error}; \
 			} \
 		} \
+		catch (Wt::Dbo::Exception& e) \
+		{ \
+			std::cerr << "Caught DBO exception: " <<e.code() << std::endl; \
+			throw; \
+		} \
 		catch (std::exception& e) \
 		{ \
 			std::cerr << "Exception caught: " << e.what() << std::endl; \
@@ -660,7 +665,7 @@ testMultipleTracksSingleCluster(Session& session)
 {
 	std::list<ScopedTrack> tracks;
 	ScopedClusterType clusterType {session, "MyClusterType"};
-	ScopedCluster cluster {session, clusterType.lockAndGet(), "MyClusterType"};
+	ScopedCluster cluster {session, clusterType.lockAndGet(), "MyCluster"};
 
 	for (std::size_t i {}; i < 10; ++i)
 	{
@@ -686,6 +691,99 @@ testMultipleTracksSingleCluster(Session& session)
 	}
 }
 
+static
+void
+testMultipleTracksMultipleClustersTopRelease(Session& session)
+{
+	ScopedClusterType clusterType {session, "ClusterType"};
+	ScopedCluster cluster1 {session, clusterType.lockAndGet(), "Cluster1"};
+	ScopedCluster cluster2 {session, clusterType.lockAndGet(), "Cluster2"};
+	ScopedCluster cluster3 {session, clusterType.lockAndGet(), "Cluster3"};
+	ScopedTrack trackA {session, "TrackA"};
+	ScopedTrack trackB {session, "TrackB"};
+	ScopedTrack trackC {session, "TrackC"};
+	ScopedRelease releaseA {session, "ReleaseA"};
+	ScopedRelease releaseB {session, "ReleaseB"};
+	ScopedRelease releaseC {session, "ReleaseC"};
+
+	ScopedUser user {session, "MyUser", User::PasswordHash {}};
+	ScopedTrackList trackList {session, "TrackList", TrackList::Type::Playlist, false, user.lockAndGet()};
+
+	{
+		auto transaction {session.createUniqueTransaction()};
+
+		cluster1.get().modify()->addTrack(trackA.get());
+		cluster2.get().modify()->addTrack(trackB.get());
+		cluster2.get().modify()->addTrack(trackC.get());
+		cluster3.get().modify()->addTrack(trackC.get());
+
+		trackA.get().modify()->setRelease(releaseA.get());
+		trackB.get().modify()->setRelease(releaseB.get());
+		trackC.get().modify()->setRelease(releaseC.get());
+	}
+
+	{
+		auto transaction {session.createUniqueTransaction()};
+
+		TrackListEntry::create(session, trackA.get(), trackList.get());
+		TrackListEntry::create(session, trackB.get(), trackList.get());
+		TrackListEntry::create(session, trackB.get(), trackList.get());
+	}
+
+	{
+		auto transaction {session.createSharedTransaction()};
+
+		bool hasMore;
+		const auto releases{trackList->getTopReleases({}, std::nullopt, hasMore)};
+		CHECK(releases.size() == 2);
+		CHECK(releases[0].id() == releaseB.getId());
+		CHECK(releases[1].id() == releaseA.getId());
+	}
+
+	{
+		auto transaction {session.createSharedTransaction()};
+
+ 		bool hasMore;
+		auto releases{trackList->getTopReleases({cluster1.getId()}, std::nullopt, hasMore)};
+		CHECK(releases.size() == 1);
+		CHECK(releases[0].id() == releaseA.getId());
+
+		releases = trackList->getTopReleases({cluster2.getId()}, std::nullopt, hasMore);
+		CHECK(releases.size() == 1);
+		CHECK(releases[0].id() == releaseB.getId());
+
+		releases = trackList->getTopReleases({cluster2.getId(), cluster1.getId()}, std::nullopt, hasMore);
+		CHECK(releases.empty());
+
+		releases = trackList->getTopReleases({cluster2.getId(), cluster3.getId()}, std::nullopt, hasMore);
+		CHECK(releases.empty());
+	}
+
+
+	{
+		auto transaction {session.createUniqueTransaction()};
+
+		TrackListEntry::create(session, trackC.get(), trackList.get());
+		TrackListEntry::create(session, trackC.get(), trackList.get());
+		TrackListEntry::create(session, trackC.get(), trackList.get());
+	}
+
+	{
+		auto transaction {session.createSharedTransaction()};
+
+ 		bool hasMore;
+		auto releases {trackList->getTopReleases({cluster2.getId(), cluster3.getId()}, std::nullopt, hasMore)};
+		CHECK(releases.size() == 1);
+		CHECK(releases[0].id() == releaseC.getId());
+
+		releases = trackList->getTopReleases({cluster2.getId()}, std::nullopt, hasMore);
+		CHECK(releases.size() == 2);
+		CHECK(releases[0].id() == releaseC.getId());
+		CHECK(releases[1].id() == releaseB.getId());
+	}
+
+
+}
 
 static
 void
@@ -1120,10 +1218,11 @@ testSingleUser(Session& session)
 	{
 		auto transaction {session.createSharedTransaction()};
 
+		bool hasMore {};
 		CHECK(user->getPlayedTrackList(session)->getCount() == 0);
-		CHECK(user->getPlayedTrackList(session)->getTopTracks(1).empty());
-		CHECK(user->getPlayedTrackList(session)->getTopArtists(1).empty());
-		CHECK(user->getPlayedTrackList(session)->getTopReleases(1).empty());
+		CHECK(user->getPlayedTrackList(session)->getTopTracks(0, 1, hasMore).empty());
+		CHECK(user->getPlayedTrackList(session)->getTopArtists(0, 1, hasMore).empty());
+		CHECK(user->getPlayedTrackList(session)->getTopReleases({}, Range {0, 1}, hasMore).empty());
 		CHECK(user->getQueuedTrackList(session)->getCount() == 0);
 	}
 }
@@ -1519,72 +1618,71 @@ int main()
 
 		std::cout << "Database test file: '" << tmpFile.string() << "'" << std::endl;
 
-		for (std::size_t i = 0; i < 2; ++i)
-		{
-			Database::Db db {tmpFile};
-			Database::Session session {db};
-			session.prepareTables();
+		Database::Db db {tmpFile};
+		Database::Session session {db};
+		session.prepareTables();
 
-			auto runTest = [&session](const std::string& name, std::function<void(Session&)> testFunc)
-			{
-				std::cout << "Running test '" << name << "'..." << std::endl;
-				testFunc(session);
-				testDatabaseEmpty(session);
-				std::cout << "Running test '" << name << "': SUCCESS" << std::endl;
-			};
+		auto runTest = [&session](const std::string& name, std::function<void(Session&)> testFunc)
+		{
+			std::cout << "Running test '" << name << "'..." << std::endl;
+			testFunc(session);
+			testDatabaseEmpty(session);
+			std::cout << "Running test '" << name << "': SUCCESS" << std::endl;
+		};
 
 #define RUN_TEST(test)	runTest(#test, test)
 
-			// Special test to remove any default created entries
-			RUN_TEST(testRemoveDefaultEntries);
+		// Special test to remove any default created entries
+		RUN_TEST(testRemoveDefaultEntries);
 
-			RUN_TEST(testSingleTrack);
-			RUN_TEST(testSingleArtist);
-			RUN_TEST(testSingleRelease);
-			RUN_TEST(testSingleCluster);
+		RUN_TEST(testSingleTrack);
+		RUN_TEST(testSingleArtist);
+		RUN_TEST(testSingleRelease);
+		RUN_TEST(testSingleCluster);
 
-			RUN_TEST(testSingleTrackSingleArtist);
-			RUN_TEST(testSingleTrackSingleArtistMultiRoles);
-			RUN_TEST(testSingleTrackMultiArtists);
+		RUN_TEST(testSingleTrackSingleArtist);
+		RUN_TEST(testSingleTrackSingleArtistMultiRoles);
+		RUN_TEST(testSingleTrackMultiArtists);
 
-			RUN_TEST(testSingleArtistSearchByName);
-			RUN_TEST(testMultiArtistsSortMethod);
+		RUN_TEST(testSingleArtistSearchByName);
+		RUN_TEST(testMultiArtistsSortMethod);
 
-			RUN_TEST(testSingleTrackSingleRelease);
-			RUN_TEST(testMultiTracksSingleReleaseTotalDiscTrack);
+		RUN_TEST(testSingleTrackSingleRelease);
+		RUN_TEST(testMultiTracksSingleReleaseTotalDiscTrack);
 
-			RUN_TEST(testSingleTrackSingleCluster);
-			RUN_TEST(testMultipleTracksSingleCluster);
+		RUN_TEST(testSingleTrackSingleCluster);
+		RUN_TEST(testMultipleTracksSingleCluster);
 
-			RUN_TEST(testMultipleTracksSingleClusterSimilarity);
-			RUN_TEST(testMultipleTracksMultipleClustersSimilarity);
+		RUN_TEST(testMultipleTracksMultipleClustersTopRelease);
 
-			RUN_TEST(testSingleTrackSingleReleaseSingleCluster);
-			RUN_TEST(testSingleTrackSingleArtistMultiClusters);
-			RUN_TEST(testSingleTrackSingleArtistMultiRolesMultiClusters);
-			RUN_TEST(testMultiTracksSingleArtistMultiClusters);
-			RUN_TEST(testMultiTracksSingleArtistSingleRelease);
+		RUN_TEST(testMultipleTracksSingleClusterSimilarity);
+		RUN_TEST(testMultipleTracksMultipleClustersSimilarity);
 
-			RUN_TEST(testSingleTrackSingleReleaseSingleArtist);
+		RUN_TEST(testSingleTrackSingleReleaseSingleCluster);
+		RUN_TEST(testSingleTrackSingleArtistMultiClusters);
+		RUN_TEST(testSingleTrackSingleArtistMultiRolesMultiClusters);
+		RUN_TEST(testMultiTracksSingleArtistMultiClusters);
+		RUN_TEST(testMultiTracksSingleArtistSingleRelease);
 
-			RUN_TEST(testSingleTrackSingleReleaseSingleArtistSingleCluster);
-			RUN_TEST(testSingleTrackSingleReleaseSingleArtistMultiClusters);
+		RUN_TEST(testSingleTrackSingleReleaseSingleArtist);
 
-			RUN_TEST(testSingleUser);
+		RUN_TEST(testSingleTrackSingleReleaseSingleArtistSingleCluster);
+		RUN_TEST(testSingleTrackSingleReleaseSingleArtistMultiClusters);
 
-			RUN_TEST(testSingleStarredArtist);
-			RUN_TEST(testSingleStarredRelease);
-			RUN_TEST(testSingleStarredTrack);
+		RUN_TEST(testSingleUser);
 
-			RUN_TEST(testSingleTrackList);
-			RUN_TEST(testSingleTrackListMultipleTrack);
-			RUN_TEST(testSingleTrackListMultipleTrackSingleCluster);
-			RUN_TEST(testSingleTrackListMultipleTrackMultiClusters);
-			RUN_TEST(testMultipleTracksMultipleArtistsMultiClusters);
-			RUN_TEST(testMultipleTracksMultipleReleasesMultiClusters);
+		RUN_TEST(testSingleStarredArtist);
+		RUN_TEST(testSingleStarredRelease);
+		RUN_TEST(testSingleStarredTrack);
 
-			RUN_TEST(testSingleTrackSingleUserSingleBookmark);
-		}
+		RUN_TEST(testSingleTrackList);
+		RUN_TEST(testSingleTrackListMultipleTrack);
+		RUN_TEST(testSingleTrackListMultipleTrackSingleCluster);
+		RUN_TEST(testSingleTrackListMultipleTrackMultiClusters);
+		RUN_TEST(testMultipleTracksMultipleArtistsMultiClusters);
+		RUN_TEST(testMultipleTracksMultipleReleasesMultiClusters);
+
+		RUN_TEST(testSingleTrackSingleUserSingleBookmark);
 	}
 	catch (std::exception& e)
 	{

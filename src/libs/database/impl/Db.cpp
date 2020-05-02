@@ -33,7 +33,7 @@ Db::Db(const std::filesystem::path& dbPath)
 	LMS_LOG(DB, INFO) << "Creating connection pool on file " << dbPath.string();
 
 	std::unique_ptr<Wt::Dbo::backend::Sqlite3> connection {std::make_unique<Wt::Dbo::backend::Sqlite3>(dbPath.string())};
-//	connection->setProperty("show-queries", "true");
+	connection->setProperty("show-queries", "true");
 	connection->executeSql("pragma journal_mode=WAL");
 	connection->executeSql("pragma synchronous=normal");
 
