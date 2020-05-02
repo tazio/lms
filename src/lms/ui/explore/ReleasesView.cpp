@@ -189,7 +189,7 @@ Releases::getReleases(std::optional<Database::Range> range, bool& moreResults) c
 			break;
 
 		case Mode::RecentlyAdded:
-			releases = Release::getLastAdded(LmsApp->getDbSession(), std::nullopt, _filters->getClusterIds(), range, moreResults);
+			releases = Release::getLastWritten(LmsApp->getDbSession(), std::nullopt, _filters->getClusterIds(), range, moreResults);
 			break;
 
 		case Mode::All:

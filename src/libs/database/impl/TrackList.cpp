@@ -321,31 +321,7 @@ TrackList::getTopReleases(const std::set<IdType>& clusterIds, std::optional<Rang
 	assert(session());
 	assert(IdIsValid(self()->id()));
 
-	auto query {session()->query<Release::pointer>("SELECT r from release r INNER JOIN track t ON t.release_id = r.id INNER JOIN tracklist_entry p_e ON p_e.track_id = t.id INNER JOIN tracklist p ON p.id = p_e.tracklist_id")};
-
-	query.where("p.id = ?").bind(self()->id());
-
-	if (!clusterIds.empty())
-	{
-getReleasesQuery(Wt::Dbo::Session& session, IdType tracklistId, const std::set<IdType>& clusterIds)
-		std::ostringstream oss;
-		oss << "r.id IN (SELECT DISTINCT r.id FROM release r"
-				" INNER JOIN track t ON t.release_id = r.id"
-				" INNER JOIN cluster c ON c.id = t_c.cluster_id"
-				" INNER JOIN track_cluster t_c ON t_c.track_id = t.id";
-
-		WhereClause clusterClause;
-		for (auto id : clusterIds)
-		{
-			clusterClause.Or(WhereClause("c.id = ?")).bind(std::to_string(id));
-			query.bind(id);
-		}
-
-		oss << " " << clusterClause.get();
-		oss << " GROUP BY t.id HAVING COUNT(*) = " << clusterIds.size() << ")";
-
-		query.where(oss.str());
-	}
+	auto query {getReleasesQuery(*session(), self()->id(), clusterIds)};
 
 	Wt::Dbo::collection<Release::pointer> collection = query
 		.orderBy("COUNT(r.id) DESC")

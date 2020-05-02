@@ -185,7 +185,7 @@ Release::getAllOrphans(Session& session)
 }
 
 std::vector<Release::pointer>
-Release::getLastAdded(Session& session,
+Release::getLastWritten(Session& session,
 		std::optional<Wt::WDateTime> after,
 		const std::set<IdType>& clusterIds,
 		std::optional<Range> range,
@@ -198,7 +198,7 @@ Release::getLastAdded(Session& session,
 		query.where("t.file_added > ?").bind(after);
 
 	Wt::Dbo::collection<Release::pointer> collection = query
-		.orderBy("t.file_added DESC")
+		.orderBy("t.file_last_write DESC")
 		.groupBy("r.id")
 		.offset(range ? static_cast<int>(range->offset) : -1)
 		.limit(range ? static_cast<int>(range->limit) + 1: -1);
@@ -213,7 +213,6 @@ Release::getLastAdded(Session& session,
 		moreResults = false;
 
 	return res;
-
 }
 
 std::vector<Release::pointer>
