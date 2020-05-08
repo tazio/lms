@@ -40,7 +40,7 @@ class Artist : public Wt::WContainerWidget
 		Wt::Signal<const std::vector<Database::IdType>&> releasesPlay;
 
 	private:
-		void refresh();
+		void refreshView();
 
 		Filters* _filters;
 };

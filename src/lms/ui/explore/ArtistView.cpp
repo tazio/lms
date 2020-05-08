@@ -46,18 +46,19 @@ Artist::Artist(Filters* filters)
 {
 	wApp->internalPathChanged().connect([=]
 	{
-		refresh();
+		refreshView();
 	});
 
-	refresh();
+	refreshView();
 
-	filters->updated().connect([=] {
-		refresh();
+	filters->updated().connect([=]
+	{
+		refreshView();
 	});
 }
 
 void
-Artist::refresh()
+Artist::refreshView()
 {
 	if (!wApp->internalPathMatches("/artist/"))
 		return;

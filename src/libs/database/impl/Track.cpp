@@ -50,7 +50,7 @@ createQuery(Session& session,
 	if (!clusterIds.empty())
 	{
 		std::ostringstream oss;
-		oss << "t.id IN (SELECT DISTINCT t.id FROM release t"
+		oss << "t.id IN (SELECT DISTINCT t.id FROM track t"
 			" INNER JOIN track_cluster t_c ON t_c.track_id = t.id"
 			" INNER JOIN cluster c ON c.id = t_c.cluster_id";
 

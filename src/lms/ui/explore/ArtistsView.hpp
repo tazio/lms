@@ -20,6 +20,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include <Wt/WComboBox.h>
 #include <Wt/WContainerWidget.h>
@@ -43,17 +44,40 @@ class Artists : public Wt::WTemplate
 	public:
 		Artists(Filters* filters);
 
-		Wt::Signal<const std::vector<Database::IdType>&> artistsAdd;
-		Wt::Signal<const std::vector<Database::IdType>&> artistsPlay;
-
 	private:
-		void refresh();
+		enum class Mode
+		{
+			Random,
+			RecentlyPlayed,
+			RecentlyAdded,
+			MostlyPlayed,
+			All
+		};
+
+		void refreshView();
+		void refreshView(Mode mode);
 		void addSome();
 
-		Filters* _filters;
-		Wt::WPushButton* _showMore;
-		Wt::WComboBox* _linkType;
-		Wt::WContainerWidget* _container;
+		std::vector<Wt::Dbo::ptr<Database::Artist>> getArtists(std::optional<Database::Range> range, bool& moreResults);
+		std::vector<Wt::Dbo::ptr<Database::Artist>> getRandomArtists(std::optional<Database::Range> range, bool& moreResults);
+
+		static constexpr Mode defaultMode {Mode::Random};
+		static constexpr std::size_t batchSize {30};
+		static inline std::unordered_map<Mode, std::optional<std::size_t>> maxItemsPerMode
+		{
+			{Mode::Random, batchSize * 4},
+			{Mode::RecentlyPlayed, batchSize * 4},
+			{Mode::RecentlyAdded, batchSize * 2},
+			{Mode::MostlyPlayed, batchSize * 2},
+			{Mode::All, std::nullopt},
+		};
+
+		Mode _mode {defaultMode};
+		std::vector<Database::IdType> _randomArtists;
+		Filters* _filters {};
+		Wt::WPushButton* _showMore {};
+		Wt::WContainerWidget* _container {};
+		Wt::WComboBox* _linkType {};
 };
 
 } // namespace UserInterface

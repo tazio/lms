@@ -43,8 +43,8 @@ using namespace Database;
 namespace UserInterface {
 
 Releases::Releases(Filters* filters)
-: Wt::WTemplate(Wt::WString::tr("Lms.Explore.Releases.template")),
-_filters(filters)
+: Wt::WTemplate {Wt::WString::tr("Lms.Explore.Releases.template")},
+_filters {filters}
 {
 	addFunction("tr", &Wt::WTemplate::Functions::tr);
 
@@ -106,6 +106,52 @@ Releases::refreshView(Mode mode)
 	refreshView();
 }
 
+std::unique_ptr<Wt::WTemplate>
+Releases::createEntry(const Release::pointer& release)
+{
+	const IdType releaseId {release.id()};
+
+	auto entry = std::make_unique<Wt::WTemplate>(Wt::WString::tr("Lms.Explore.Releases.template.entry"));
+	entry->addFunction("tr", Wt::WTemplate::Functions::tr);
+
+	Wt::WAnchor* anchor = entry->bindWidget("cover", LmsApplication::createReleaseAnchor(release, false));
+	auto cover = std::make_unique<Wt::WImage>();
+	cover->setImageLink(LmsApp->getImageResource()->getReleaseUrl(release.id(), 128));
+	cover->setStyleClass("Lms-cover-medium");
+	anchor->setImage(std::move(cover));
+
+	entry->bindWidget("release-name", LmsApplication::createReleaseAnchor(release));
+
+	auto artists = release->getReleaseArtists();
+	if (artists.empty())
+		artists = release->getArtists();
+
+	if (artists.size() > 1)
+	{
+		entry->setCondition("if-has-artist", true);
+		entry->bindNew<Wt::WText>("artist-name", Wt::WString::tr("Lms.Explore.various-artists"));
+	}
+	else if (artists.size() == 1)
+	{
+		entry->setCondition("if-has-artist", true);
+		entry->bindWidget("artist-name", LmsApplication::createArtistAnchor(artists.front()));
+	}
+
+	Wt::WText* playBtn = entry->bindNew<Wt::WText>("play-btn", Wt::WString::tr("Lms.Explore.template.play-btn"), Wt::TextFormat::XHTML);
+	playBtn->clicked().connect([=]
+	{
+		releasesPlay.emit({releaseId});
+	});
+
+	Wt::WText* addBtn = entry->bindNew<Wt::WText>("add-btn", Wt::WString::tr("Lms.Explore.template.add-btn"), Wt::TextFormat::XHTML);
+	addBtn->clicked().connect([=]
+	{
+		releasesAdd.emit({releaseId});
+	});
+
+	return entry;
+}
+
 void
 Releases::addSome()
 {
@@ -115,45 +161,7 @@ Releases::addSome()
 
 	for (const Release::pointer& release : getReleases(Range {static_cast<std::size_t>(_container->count()), batchSize}, moreResults))
 	{
-		const IdType releaseId {release.id()};
-
-		Wt::WTemplate* entry = _container->addNew<Wt::WTemplate>(Wt::WString::tr("Lms.Explore.Releases.template.entry"));
-		entry->addFunction("tr", Wt::WTemplate::Functions::tr);
-
-		Wt::WAnchor* anchor = entry->bindWidget("cover", LmsApplication::createReleaseAnchor(release, false));
-		auto cover = std::make_unique<Wt::WImage>();
-		cover->setImageLink(LmsApp->getImageResource()->getReleaseUrl(release.id(), 128));
-		cover->setStyleClass("Lms-cover-medium");
-		anchor->setImage(std::move(cover));
-
-		entry->bindWidget("release-name", LmsApplication::createReleaseAnchor(release));
-
-		auto artists = release->getReleaseArtists();
-		if (artists.empty())
-			artists = release->getArtists();
-
-		if (artists.size() > 1)
-		{
-			entry->setCondition("if-has-artist", true);
-			entry->bindNew<Wt::WText>("artist-name", Wt::WString::tr("Lms.Explore.various-artists"));
-		}
-		else if (artists.size() == 1)
-		{
-			entry->setCondition("if-has-artist", true);
-			entry->bindWidget("artist-name", LmsApplication::createArtistAnchor(artists.front()));
-		}
-
-		Wt::WText* playBtn = entry->bindNew<Wt::WText>("play-btn", Wt::WString::tr("Lms.Explore.template.play-btn"), Wt::TextFormat::XHTML);
-		playBtn->clicked().connect([=]
-		{
-			releasesPlay.emit({releaseId});
-		});
-
-		Wt::WText* addBtn = entry->bindNew<Wt::WText>("add-btn", Wt::WString::tr("Lms.Explore.template.add-btn"), Wt::TextFormat::XHTML);
-		addBtn->clicked().connect([=]
-		{
-			releasesAdd.emit({releaseId});
-		});
+		_container->addWidget(createEntry(release));
 	}
 
 	_showMore->setHidden(!moreResults);

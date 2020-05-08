@@ -5,10 +5,9 @@
 <message id="Lms.Explore.Artists.template">
 	<div class="Lms-header">
 		<h2>${tr:Lms.Explore.artists}</h2>
-	</div>
-	<div class="row">
-		<div class="col-xs-12 col-sm-3">
-			<div class="Lms-explore-artists-input">
+		${mode class="nav nav-pills Lms-explore-mode-container"}
+		<div class="row">
+			<div class="col-sm-2">
 				${link-type}
 			</div>
 		</div>

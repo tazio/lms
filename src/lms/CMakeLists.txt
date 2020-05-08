@@ -15,7 +15,6 @@ add_executable(lms
 	ui/admin/UserView.cpp
 	ui/admin/UsersView.cpp
 	ui/common/Validators.cpp
-	ui/explore/ArtistInfoView.cpp
 	ui/explore/ArtistListHelpers.cpp
 	ui/explore/ArtistView.cpp
 	ui/explore/ArtistsView.cpp

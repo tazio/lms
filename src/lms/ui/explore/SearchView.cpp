@@ -126,7 +126,7 @@ namespace UserInterface
 								_keywords,
 								std::nullopt,
 								Database::Artist::SortMethod::BySortName,
-								0, maxEntries, more)};
+								Database::Range {0, maxEntries}, more)};
 
 		if (!artists.empty())
 		{

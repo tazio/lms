@@ -323,11 +323,11 @@ testSingleTrackSingleArtistMultiRoles(Session& session)
 	{
 		auto transaction {session.createSharedTransaction()};
 		bool hasMore{};
-		CHECK(Artist::getByFilter(session, {}, {}, std::nullopt, Artist::SortMethod::ByName, {}, {}, hasMore).size() == 1);
-		CHECK(Artist::getByFilter(session, {}, {}, TrackArtistLink::Type::Artist, Artist::SortMethod::ByName, {}, {}, hasMore).size() == 1);
-		CHECK(Artist::getByFilter(session, {}, {}, TrackArtistLink::Type::ReleaseArtist, Artist::SortMethod::ByName, {}, {}, hasMore).size() == 1);
-		CHECK(Artist::getByFilter(session, {}, {}, TrackArtistLink::Type::Writer, Artist::SortMethod::ByName, {}, {}, hasMore).size() == 1);
-		CHECK(Artist::getByFilter(session, {}, {}, TrackArtistLink::Type::Composer, Artist::SortMethod::ByName, {}, {}, hasMore).empty());
+		CHECK(Artist::getByFilter(session, {}, {}, std::nullopt, Artist::SortMethod::ByName, std::nullopt, hasMore).size() == 1);
+		CHECK(Artist::getByFilter(session, {}, {}, TrackArtistLink::Type::Artist, Artist::SortMethod::ByName, std::nullopt, hasMore).size() == 1);
+		CHECK(Artist::getByFilter(session, {}, {}, TrackArtistLink::Type::ReleaseArtist, Artist::SortMethod::ByName, std::nullopt, hasMore).size() == 1);
+		CHECK(Artist::getByFilter(session, {}, {}, TrackArtistLink::Type::Writer, Artist::SortMethod::ByName, std::nullopt, hasMore).size() == 1);
+		CHECK(Artist::getByFilter(session, {}, {}, TrackArtistLink::Type::Composer, Artist::SortMethod::ByName, std::nullopt, hasMore).empty());
 	}
 
 	{
@@ -403,23 +403,25 @@ void
 testSingleArtistSearchByName(Session& session)
 {
 	ScopedArtist artist {session, "AAA"};
+	ScopedTrack track {session, "MyTrack"}; // filters does not work on orphans
 
 	{
 		auto transaction {session.createUniqueTransaction()};
 		artist.get().modify()->setSortName("ZZZ");
+		TrackArtistLink::create(session, track.get(), artist.get(), TrackArtistLink::Type::Artist);
 	}
 
 	{
 		auto transaction {session.createSharedTransaction()};
 
 		bool more {};
-		CHECK(Artist::getByFilter(session, {}, {"N"}, std::nullopt, Artist::SortMethod::ByName, std::nullopt, std::nullopt, more).empty());
+		CHECK(Artist::getByFilter(session, {}, {"N"}, std::nullopt, Artist::SortMethod::ByName, std::nullopt, more).empty());
 
-		const auto artistsByAAA {Artist::Artist::getByFilter(session, {}, {"A"}, std::nullopt, Artist::SortMethod::ByName, std::nullopt, std::nullopt, more)};
+		const auto artistsByAAA {Artist::Artist::getByFilter(session, {}, {"A"}, std::nullopt, Artist::SortMethod::ByName, std::nullopt, more)};
 		CHECK(artistsByAAA.size() == 1);
 		CHECK(artistsByAAA.front().id() == artist.getId());
 
-		const auto artistsByZZZ {Artist::Artist::getByFilter(session, {}, {"Z"}, std::nullopt, Artist::SortMethod::ByName, std::nullopt, std::nullopt, more)};
+		const auto artistsByZZZ {Artist::Artist::getByFilter(session, {}, {"Z"}, std::nullopt, Artist::SortMethod::ByName, std::nullopt, more)};
 		CHECK(artistsByZZZ.size() == 1);
 		CHECK(artistsByZZZ.front().id() == artist.getId());
 

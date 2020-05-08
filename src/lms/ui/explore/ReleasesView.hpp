@@ -58,19 +58,19 @@ class Releases : public Wt::WTemplate
 		void refreshView();
 		void refreshView(Mode mode);
 		void addSome();
-
 		std::vector<Wt::Dbo::ptr<Database::Release>> getReleases(std::optional<Database::Range> range, bool& moreResults);
 		std::vector<Wt::Dbo::ptr<Database::Release>> getRandomReleases(std::optional<Database::Range> range, bool& moreResults);
 		std::vector<Database::IdType> getAllReleases();
+		std::unique_ptr<Wt::WTemplate> createEntry(const Wt::Dbo::ptr<Database::Release>& release);
 
 		static constexpr Mode defaultMode {Mode::Random};
 		static constexpr std::size_t batchSize {20};
 		static inline std::unordered_map<Mode, std::optional<std::size_t>> maxItemsPerMode
 		{
-			{Mode::Random, 128},
-			{Mode::RecentlyPlayed, 64},
-			{Mode::RecentlyAdded, 32},
-			{Mode::MostlyPlayed, 32},
+			{Mode::Random, batchSize * 6},
+			{Mode::RecentlyPlayed, batchSize * 3},
+			{Mode::RecentlyAdded, batchSize * 2},
+			{Mode::MostlyPlayed, batchSize * 2},
 			{Mode::All, std::nullopt},
 		};
 

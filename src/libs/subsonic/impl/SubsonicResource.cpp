@@ -936,7 +936,7 @@ handleGetArtistsRequest(RequestContext& context)
 			{},
 			linkType,
 			Artist::SortMethod::BySortName,
-			{}, {}, more)};
+			std::nullopt, more)};
 	for (const Artist::pointer& artist : artists)
 		indexNode.addArrayChild("artist", artistToResponseNode(user, artist, true /* id3 */));
 
@@ -967,7 +967,8 @@ handleGetMusicDirectoryRequest(RequestContext& context)
 		{
 			directoryNode.setAttribute("name", "Music");
 
-			auto artists {Artist::getAll(context.dbSession, Artist::SortMethod::BySortName)};
+			bool moreResults{};
+			auto artists {Artist::getAll(context.dbSession, Artist::SortMethod::BySortName, std::nullopt, moreResults)};
 			for (const Artist::pointer& artist : artists)
 				directoryNode.addArrayChild("child", artistToResponseNode(user, artist, false /* no id3 */));
 
@@ -1079,7 +1080,7 @@ handleGetIndexesRequest(RequestContext& context)
 			{},
 			linkType,
 			Artist::SortMethod::BySortName,
-			{}, {}, more)};
+			std::nullopt, more)};
 	for (const Artist::pointer& artist : artists)
 		indexNode.addArrayChild("artist", artistToResponseNode(user, artist, false /* no id3 */));
 
@@ -1368,7 +1369,7 @@ handleSearchRequestCommon(RequestContext& context, bool id3)
 
 	bool more;
 	{
-		auto artists {Artist::getByFilter(context.dbSession, {}, keywords, std::nullopt, Artist::SortMethod::BySortName, artistOffset, artistCount, more)};
+		auto artists {Artist::getByFilter(context.dbSession, {}, keywords, std::nullopt, Artist::SortMethod::BySortName, Range {artistOffset, artistCount}, more)};
 		for (const Artist::pointer& artist : artists)
 			searchResult2Node.addArrayChild("artist", artistToResponseNode(user, artist, id3));
 	}
