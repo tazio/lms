@@ -12,9 +12,9 @@
 					<span class="icon-bar"></span>
 				</button>
 				${title class="navbar-brand"}
-				<form class="Lms-navbar-search pull-left">
+				<div class="Lms-navbar-search pull-left">
 					${search class="form-control"}
-				</form>
+				</div>
 			</div>
 			<div class="collapse navbar-collapse">
 				<ul class="nav navbar-nav">
@@ -23,9 +23,9 @@
 					<li>${tracks}</li>
 					<li>${playqueue}</li>
 				</ul>
-				<form class="navbar-form navbar-left">
+				<div class="navbar-form navbar-left">
 					${filters class="form-group Lms-clusters-control"}
-				</form>
+				</div>
 				<ul class="nav navbar-nav navbar-right">
 					${<if-is-admin>}
 					<li class="dropdown">

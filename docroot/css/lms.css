@@ -54,7 +54,7 @@ a.Lms-artistname:hover, a.Lms-artistname:focus {
 }
 
 .Lms-clusters-control {
-	display: inline-block;
+	margin-top: 4px;
 }
 
 .Lms-control-btn:hover {
