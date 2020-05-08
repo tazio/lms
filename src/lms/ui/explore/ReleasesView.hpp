@@ -27,6 +27,11 @@
 
 #include "database/Types.hpp"
 
+namespace Database
+{
+	class Release;
+}
+
 namespace UserInterface {
 
 class Filters;
@@ -54,25 +59,26 @@ class Releases : public Wt::WTemplate
 		void refreshView(Mode mode);
 		void addSome();
 
-		std::vector<Database::IdType> getReleases(std::optional<Database::Range> range, bool& moreResults) const;
-		std::vector<Database::IdType> getReleases() const;
+		std::vector<Wt::Dbo::ptr<Database::Release>> getReleases(std::optional<Database::Range> range, bool& moreResults);
+		std::vector<Wt::Dbo::ptr<Database::Release>> getRandomReleases(std::optional<Database::Range> range, bool& moreResults);
+		std::vector<Database::IdType> getAllReleases();
 
 		static constexpr Mode defaultMode {Mode::Random};
 		static constexpr std::size_t batchSize {20};
 		static inline std::unordered_map<Mode, std::optional<std::size_t>> maxItemsPerMode
 		{
-			{Mode::Random, batchSize},
+			{Mode::Random, 128},
 			{Mode::RecentlyPlayed, 64},
 			{Mode::RecentlyAdded, 32},
 			{Mode::MostlyPlayed, 32},
 			{Mode::All, std::nullopt},
 		};
 
-		Filters* _filters;
 		Mode _mode {defaultMode};
-		std::vector<Database::IdType> _randomReleases; // releases currently displayed in random mode
-		Wt::WPushButton* _showMore;
-		Wt::WContainerWidget* _container;
+		Filters* _filters {};
+		std::vector<Database::IdType> _randomReleases;
+		Wt::WContainerWidget* _container {};
+		Wt::WPushButton* _showMore {};
 };
 
 } // namespace UserInterface

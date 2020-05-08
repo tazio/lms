@@ -677,7 +677,7 @@ handleGetRandomSongsRequest(RequestContext& context)
 	if (!user)
 		throw UserNotAuthorizedError {};
 
-	auto tracks {Track::getAllRandom(context.dbSession, size)};
+	auto tracks {Track::getAllRandom(context.dbSession, {}, size)};
 
 	Response response {Response::createOkResponse()};
 
@@ -1297,7 +1297,7 @@ handleGetSongsByGenreRequest(RequestContext& context)
 	Response::Node& songsByGenreNode {response.createNode("songsByGenre")};
 
 	bool more;
-	auto tracks {Track::getByFilter(context.dbSession, {cluster.id()}, {}, offset, size, more)};
+	auto tracks {Track::getByFilter(context.dbSession, {cluster.id()}, {}, Range {offset, size}, more)};
 	for (const Track::pointer& track : tracks)
 		songsByGenreNode.addArrayChild("song", trackToResponseNode(track, context.dbSession, user));
 
@@ -1380,7 +1380,7 @@ handleSearchRequestCommon(RequestContext& context, bool id3)
 	}
 
 	{
-		auto tracks {Track::getByFilter(context.dbSession, {}, keywords, songOffset, songCount, more)};
+		auto tracks {Track::getByFilter(context.dbSession, {}, keywords, Range {songOffset, songCount}, more)};
 		for (const Track::pointer& track : tracks)
 			searchResult2Node.addArrayChild("song", trackToResponseNode(track, context.dbSession, user));
 	}

@@ -31,6 +31,45 @@
 namespace Database
 {
 
+template <typename T>
+static
+Wt::Dbo::Query<T>
+createQuery(Session& session,
+			const std::string& queryStr,
+			const std::set<IdType>& clusterIds,
+			const std::vector<std::string>& keywords)
+{
+
+	auto query {session.getDboSession().query<T>(queryStr)};
+	query.join("track t ON t.release_id = r.id");
+
+	for (const std::string& keyword : keywords)
+		query.where("r.name LIKE ?").bind("%%" + keyword + "%%");
+
+	if (!clusterIds.empty())
+	{
+		std::ostringstream oss;
+		oss << "r.id IN (SELECT DISTINCT r.id FROM release r"
+			" INNER JOIN track t ON t.release_id = r.id"
+			" INNER JOIN cluster c ON c.id = t_c.cluster_id"
+			" INNER JOIN track_cluster t_c ON t_c.track_id = t.id";
+
+		WhereClause clusterClause;
+		for (const IdType clusterId : clusterIds)
+		{
+			clusterClause.Or(WhereClause("c.id = ?"));
+			query.bind(clusterId);
+		}
+
+		oss << " " << clusterClause.get();
+		oss << " GROUP BY t.id HAVING COUNT(*) = " << clusterIds.size() << ")";
+
+		query.where(oss.str());
+	}
+
+	return query;
+}
+
 Release::Release(const std::string& name, const std::optional<UUID>& MBID)
 : _name {std::string(name, 0 , _maxNameLength)},
 _MBID {MBID ? MBID->getAsString() : ""}
@@ -122,57 +161,34 @@ Release::getAllOrderedByArtist(Session& session, std::optional<std::size_t> offs
 	return std::vector<pointer>(res.begin(), res.end());
 }
 
-static
-Wt::Dbo::Query<Release::pointer>
-getQuery(Session& session,
-			const std::set<IdType>& clusterIds,
-			const std::vector<std::string>& keywords)
-{
-
-	auto query {session.getDboSession().query<Release::pointer>("SELECT r from release r")};
-	query.join("track t ON t.release_id = r.id");
-
-	for (const std::string& keyword : keywords)
-		query.where("r.name LIKE ?").bind("%%" + keyword + "%%");
-
-	if (!clusterIds.empty())
-	{
-		std::ostringstream oss;
-		oss << "r.id IN (SELECT DISTINCT r.id FROM release r"
-			" INNER JOIN track t ON t.release_id = r.id"
-			" INNER JOIN cluster c ON c.id = t_c.cluster_id"
-			" INNER JOIN track_cluster t_c ON t_c.track_id = t.id";
-
-		WhereClause clusterClause;
-		for (const IdType clusterId : clusterIds)
-		{
-			clusterClause.Or(WhereClause("c.id = ?"));
-			query.bind(clusterId);
-		}
-
-		oss << " " << clusterClause.get();
-		oss << " GROUP BY t.id HAVING COUNT(*) = " << clusterIds.size() << ")";
-
-		query.where(oss.str());
-	}
-
-	return query;
-}
-
 std::vector<Release::pointer>
 Release::getAllRandom(Session& session, const std::set<IdType>& clusterIds, std::optional<std::size_t> size)
 {
 	session.checkSharedLocked();
 
-	auto query {getQuery(session, clusterIds,{})};
+	auto query {createQuery<Release::pointer>(session, "SELECT DISTINCT r from release r", clusterIds,{})};
 
 	Wt::Dbo::collection<pointer> res = query
-		.groupBy("r.id")
 		.orderBy("RANDOM()")
 		.limit(size ? static_cast<int>(*size) : -1);
 
 	return std::vector<pointer>(res.begin(), res.end());
 }
+
+std::vector<IdType>
+Release::getAllIdsRandom(Session& session, const std::set<IdType>& clusterIds, std::optional<std::size_t> size)
+{
+	session.checkSharedLocked();
+
+	auto query {createQuery<IdType>(session, "SELECT DISTINCT r.id from release r", clusterIds,{})};
+
+	Wt::Dbo::collection<IdType> res = query
+		.orderBy("RANDOM()")
+		.limit(size ? static_cast<int>(*size) : -1);
+
+	return std::vector<IdType>(res.begin(), res.end());
+}
+
 
 std::vector<Release::pointer>
 Release::getAllOrphans(Session& session)
@@ -193,9 +209,9 @@ Release::getLastWritten(Session& session,
 {
 	session.checkSharedLocked();
 
-	auto query {getQuery(session, clusterIds, {})};
+	auto query {createQuery<Release::pointer>(session, "SELECT r from release r", clusterIds, {})};
 	if (after)
-		query.where("t.file_added > ?").bind(after);
+		query.where("t.file_last_write > ?").bind(after);
 
 	Wt::Dbo::collection<Release::pointer> collection = query
 		.orderBy("t.file_last_write DESC")
@@ -249,7 +265,7 @@ Release::getByFilter(Session& session,
 {
 	session.checkSharedLocked();
 
-	Wt::Dbo::collection<pointer> collection = getQuery(session, clusterIds, keywords)
+	Wt::Dbo::collection<pointer> collection = createQuery<Release::pointer>(session, "SELECT r from release r", clusterIds, keywords)
 		.groupBy("r.id")
 		.orderBy("r.name COLLATE NOCASE")
 		.limit(range ? static_cast<int>(range->limit) + 1 : -1)

@@ -16,17 +16,15 @@ add_executable(lms
 	ui/admin/UsersView.cpp
 	ui/common/Validators.cpp
 	ui/explore/ArtistInfoView.cpp
-	ui/explore/ArtistLink.cpp
-	ui/explore/ArtistsInfoView.cpp
+	ui/explore/ArtistListHelpers.cpp
 	ui/explore/ArtistView.cpp
 	ui/explore/ArtistsView.cpp
 	ui/explore/Explore.cpp
 	ui/explore/Filters.cpp
-	ui/explore/ReleaseInfoView.cpp
-	ui/explore/ReleaseLink.cpp
+	ui/explore/ReleaseListHelpers.cpp
 	ui/explore/ReleasesView.cpp
 	ui/explore/ReleaseView.cpp
-	ui/explore/TracksInfoView.cpp
+	ui/explore/SearchView.cpp
 	ui/explore/TracksView.cpp
 	ui/resource/AudioFileResource.cpp
 	ui/resource/AudioTranscodeResource.cpp

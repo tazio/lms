@@ -155,7 +155,7 @@ Filters::add(Database::IdType clusterId)
 }
 
 Filters::Filters()
-: Wt::WTemplate(Wt::WString::tr("Lms.Explore.template.filters"))
+: Wt::WTemplate {Wt::WString::tr("Lms.Explore.template.filters")}
 {
 	addFunction("tr", &Functions::tr);
 

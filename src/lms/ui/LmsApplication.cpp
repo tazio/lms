@@ -21,9 +21,7 @@
 
 #include <Wt/WAnchor.h>
 #include <Wt/WEnvironment.h>
-#include <Wt/WMenu.h>
-#include <Wt/WNavigationBar.h>
-#include <Wt/WPopupMenu.h>
+#include <Wt/WLineEdit.h>
 #include <Wt/WServer.h>
 #include <Wt/WStackedWidget.h>
 #include <Wt/WText.h>
@@ -35,6 +33,8 @@
 #include "database/Release.hpp"
 #include "database/User.hpp"
 #include "explore/Explore.hpp"
+#include "explore/Filters.hpp"
+#include "explore/SearchView.hpp"
 #include "utils/Logger.hpp"
 #include "utils/Service.hpp"
 #include "utils/String.hpp"
@@ -56,7 +56,7 @@
 
 namespace UserInterface {
 
-static constexpr const char* defaultPath {"/artists"};
+static constexpr const char* defaultPath {"/releases"};
 
 std::unique_ptr<Wt::WApplication>
 LmsApplication::create(const Wt::WEnvironment& env, Database::Db& db, LmsApplicationGroupContainer& appGroups)
@@ -116,7 +116,6 @@ LmsApplication::LmsApplication(const Wt::WEnvironment& env,
   _dbSession {db},
   _appGroups {appGroups}
 {
-	addMetaHeader(Wt::MetaHeaderType::Meta, "viewport", "width=device-width, user-scalable=no");
 
 	useStyleSheet("resources/font-awesome/css/font-awesome.min.css");
 
@@ -141,6 +140,7 @@ LmsApplication::LmsApplication(const Wt::WEnvironment& env,
 	messageResourceBundle().use(appRoot() + "releaselink");
 	messageResourceBundle().use(appRoot() + "releases");
 	messageResourceBundle().use(appRoot() + "releasesinfo");
+	messageResourceBundle().use(appRoot() + "search");
 	messageResourceBundle().use(appRoot() + "settings");
 	messageResourceBundle().use(appRoot() + "templates");
 	messageResourceBundle().use(appRoot() + "tracks");
@@ -150,6 +150,8 @@ LmsApplication::LmsApplication(const Wt::WEnvironment& env,
 	requireJQuery("js/jquery-1.10.2.min.js");
 	require("js/mediaplayer.js");
 	require("js/bootstrap-notify.js");
+	require("js/collapse.js");
+	require("js/dropdown.js");
 
 	setTitle("LMS");
 
@@ -245,7 +247,7 @@ LmsApplication::finalize()
 Wt::WLink
 LmsApplication::createArtistLink(Database::Artist::pointer artist)
 {
-	return Wt::WLink(Wt::LinkType::InternalPath, "/artist/" + std::to_string(artist.id()));
+	return Wt::WLink {Wt::LinkType::InternalPath, "/artist/" + std::to_string(artist.id())};
 }
 
 std::unique_ptr<Wt::WAnchor>
@@ -265,7 +267,7 @@ LmsApplication::createArtistAnchor(Database::Artist::pointer artist, bool addTex
 Wt::WLink
 LmsApplication::createReleaseLink(Database::Release::pointer release)
 {
-	return Wt::WLink(Wt::LinkType::InternalPath, "/release/" + std::to_string(release.id()));
+	return Wt::WLink {Wt::LinkType::InternalPath, "/release/" + std::to_string(release.id())};
 }
 
 std::unique_ptr<Wt::WAnchor>
@@ -316,7 +318,7 @@ LmsApplication::handleException(LmsApplicationException& e)
 	Wt::WTemplate* t {root()->addNew<Wt::WTemplate>(Wt::WString::tr("Lms.Error.template"))};
 	t->addFunction("tr", &Wt::WTemplate::Functions::tr);
 
-	t->bindString("error", e.what());
+	t->bindString("error", e.what(), Wt::TextFormat::Plain);
 	Wt::WPushButton* btn {t->bindNew<Wt::WPushButton>("btn-go-home", Wt::WString::tr("Lms.Error.go-home"))};
 	btn->clicked().connect([this]()
 	{
@@ -337,6 +339,7 @@ enum IdxRoot
 {
 	IdxExplore	= 0,
 	IdxPlayQueue,
+	IdxSearch,
 	IdxSettings,
 	IdxAdminDatabase,
 	IdxAdminUsers,
@@ -359,6 +362,7 @@ handlePathChange(Wt::WStackedWidget* stack, bool isAdmin)
 		{ "/release",		IdxExplore,		false },
 		{ "/tracks",		IdxExplore,		false },
 		{ "/playqueue",		IdxPlayQueue,		false },
+		{ "/search",		IdxSearch,		false },
 		{ "/settings",		IdxSettings,		false },
 		{ "/admin/database",	IdxAdminDatabase,	true },
 		{ "/admin/users",	IdxAdminUsers,		true },
@@ -434,64 +438,35 @@ LmsApplication::createHome()
 
 	Wt::WTemplate* main {root()->addWidget(std::make_unique<Wt::WTemplate>(Wt::WString::tr("Lms.template")))};
 
-	// Navbar
-	Wt::WNavigationBar* navbar {main->bindNew<Wt::WNavigationBar>("navbar-top")};
-	navbar->setTitle("LMS", Wt::WLink {Wt::LinkType::InternalPath, defaultPath});
-	navbar->setResponsive(true);
+	main->addFunction("tr", &Wt::WTemplate::Functions::tr);
 
 	// MediaPlayer
 	_mediaPlayer = main->bindNew<MediaPlayer>("player");
 
-	Wt::WMenu* menu {navbar->addMenu(std::make_unique<Wt::WMenu>())};
+	main->bindNew<Wt::WAnchor>("title",  Wt::WLink {Wt::LinkType::InternalPath, defaultPath}, "LMS");
+	main->bindNew<Wt::WAnchor>("artists", Wt::WLink {Wt::LinkType::InternalPath, "/artists"}, Wt::WString::tr("Lms.Explore.artists"));
+	main->bindNew<Wt::WAnchor>("releases", Wt::WLink {Wt::LinkType::InternalPath, "/releases"}, Wt::WString::tr("Lms.Explore.releases"));
+	main->bindNew<Wt::WAnchor>("tracks", Wt::WLink {Wt::LinkType::InternalPath, "/tracks"}, Wt::WString::tr("Lms.Explore.tracks"));
+
+	Filters* filters {main->bindNew<Filters>("filters")};
+	main->bindNew<Wt::WAnchor>("playqueue", Wt::WLink {Wt::LinkType::InternalPath, "/playqueue"}, Wt::WString::tr("Lms.PlayQueue.playqueue"));
+	main->bindString("username", getUserLoginName(), Wt::TextFormat::Plain);
+	main->bindNew<Wt::WAnchor>("settings", Wt::WLink {Wt::LinkType::InternalPath, "/settings"}, Wt::WString::tr("Lms.Settings.menu-settings"));
+
 	{
-		auto menuItem = menu->insertItem(0, Wt::WString::tr("Lms.Explore.artists"));
-		menuItem->setLink(Wt::WLink(Wt::LinkType::InternalPath, "/artists"));
-		menuItem->setSelectable(false);
-	}
-	{
-		auto menuItem = menu->insertItem(1, Wt::WString::tr("Lms.Explore.releases"));
-		menuItem->setLink(Wt::WLink(Wt::LinkType::InternalPath, "/releases"));
-		menuItem->setSelectable(false);
-	}
-	{
-		auto menuItem = menu->insertItem(2, Wt::WString::tr("Lms.Explore.tracks"));
-		menuItem->setLink(Wt::WLink(Wt::LinkType::InternalPath, "/tracks"));
-		menuItem->setSelectable(false);
-	}
-	{
-		auto menuItem = menu->insertItem(3, Wt::WString::tr("Lms.PlayQueue.playqueue"));
-		menuItem->setLink(Wt::WLink(Wt::LinkType::InternalPath, "/playqueue"));
-		menuItem->setSelectable(false);
+		auto* logout {main->bindNew<Wt::WAnchor>("logout")};
+		logout->setText(Wt::WString::tr("Lms.logout"));
+		logout->clicked().connect(this, &LmsApplication::handleUserLoggedOut);
 	}
 
-	Wt::WMenu* rightMenu = navbar->addMenu(std::make_unique<Wt::WMenu>(), Wt::AlignmentFlag::Right);
-	std::size_t itemCounter = 0;
+	Wt::WLineEdit* searchEdit {main->bindNew<Wt::WLineEdit>("search")};
+	searchEdit->setPlaceholderText(Wt::WString::tr("Lms.Explore.Search.search-placeholder"));
+
 	if (isUserAdmin())
 	{
-		auto menuItem = rightMenu->insertItem(itemCounter++, Wt::WString::tr("Lms.administration"));
-		menuItem->setSelectable(false);
-
-		auto admin = std::make_unique<Wt::WPopupMenu>();
-		auto dbSettings = admin->insertItem(0, Wt::WString::tr("Lms.Admin.Database.database"));
-		dbSettings->setLink(Wt::WLink(Wt::LinkType::InternalPath, "/admin/database"));
-		dbSettings->setSelectable(false);
-
-		auto usersSettings = admin->insertItem(1, Wt::WString::tr("Lms.Admin.Users.users"));
-		usersSettings->setLink(Wt::WLink(Wt::LinkType::InternalPath, "/admin/users"));
-		usersSettings->setSelectable(false);
-
-		menuItem->setMenu(std::move(admin));
-	}
-
-	{
-		auto menuItem = rightMenu->insertItem(itemCounter++, Wt::WString::tr("Lms.Settings.settings"));
-		menuItem->setLink(Wt::WLink(Wt::LinkType::InternalPath, "/settings"));
-		menuItem->setSelectable(false);
-	}
-	{
-		auto menuItem = rightMenu->insertItem(itemCounter++, Wt::WString::tr("Lms.logout"));
-		menuItem->setSelectable(true);
-		menuItem->triggered().connect(this, &LmsApplication::handleUserLoggedOut);
+		main->setCondition("if-is-admin", true);
+		main->bindNew<Wt::WAnchor>("database", Wt::WLink {Wt::LinkType::InternalPath, "/admin/database"}, Wt::WString::tr("Lms.Admin.Database.menu-database"));
+		main->bindNew<Wt::WAnchor>("users", Wt::WLink {Wt::LinkType::InternalPath, "/admin/users"}, Wt::WString::tr("Lms.Admin.Users.menu-users"));
 	}
 
 	// Contents
@@ -499,9 +474,21 @@ LmsApplication::createHome()
 	Wt::WStackedWidget* mainStack = main->bindNew<Wt::WStackedWidget>("contents");
 	mainStack->setAttributeValue("style", "overflow-x:visible;overflow-y:visible;");
 
-	Explore* explore = mainStack->addNew<Explore>();
+	Explore* explore = mainStack->addNew<Explore>(filters);
 	PlayQueue* playqueue = mainStack->addNew<PlayQueue>();
+	auto* search {mainStack->addNew<SearchView>(filters)};
 	mainStack->addNew<SettingsView>();
+
+	searchEdit->enterPressed().connect([=]
+	{
+		setInternalPath("/search", true);
+	});
+
+	searchEdit->textInput().connect([=]
+	{
+		setInternalPath("/search", true);
+		search->refreshView(searchEdit->text().toUTF8());
+	});
 
 	// Admin stuff
 	if (isUserAdmin())
@@ -662,8 +649,9 @@ LmsApplication::notifyMsg(MsgType type, const Wt::WString& message, std::chrono:
 			"message: '" << StringUtils::jsEscape(message.toUTF8()) << "'"
 		"},{"
 			"type: '" << msgTypeToString(type) << "',"
-			"placement: {from: 'top', align: 'center'},"
+			"placement: {from: 'bottom', align: 'right'},"
 			"timer: 250,"
+			"offset: {x: 20, y: 80},"
 			"delay: " << duration.count() << ""
 		"});";
 

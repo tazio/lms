@@ -24,7 +24,7 @@
 #include "utils/Service.hpp"
 #include "utils/String.hpp"
 
-#include "ArtistLink.hpp"
+#include "ArtistListHelpers.hpp"
 #include "LmsApplication.hpp"
 
 using namespace Database;
@@ -73,7 +73,7 @@ ArtistInfo::refresh()
 		if (!artist)
 			continue;
 
-		_similarArtistsContainer->addNew<ArtistLink>(artist);
+		_similarArtistsContainer->addWidget(ArtistListHelpers::createEntrySmall(artist));
 	}
 }
 

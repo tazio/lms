@@ -31,6 +31,7 @@
 #include "utils/Logger.hpp"
 #include "utils/String.hpp"
 
+#include "ArtistListHelpers.hpp"
 #include "LmsApplication.hpp"
 #include "Filters.hpp"
 
@@ -45,10 +46,6 @@ Artists::Artists(Filters* filters)
   _filters(filters)
 {
 	addFunction("tr", &Wt::WTemplate::Functions::tr);
-
-	_search = bindNew<Wt::WLineEdit>("search");
-	_search->setPlaceholderText(Wt::WString::tr("Lms.Explore.search-placeholder"));
-	_search->textInput().connect(this, &Artists::refresh);
 
 	_linkType = bindNew<Wt::WComboBox>("link-type");
 	{
@@ -83,8 +80,6 @@ Artists::refresh()
 void
 Artists::addSome()
 {
-	const auto searchKeywords {StringUtils::splitString(_search->text().toUTF8(), " ")};
-
 	auto clusterIds = _filters->getClusterIds();
 	auto linkModel = static_cast<ArtistLinkModel*>(_linkType->model().get());
 
@@ -93,17 +88,13 @@ Artists::addSome()
 	bool moreResults {};
 	const std::vector<Artist::pointer> artists {Artist::getByFilter(LmsApp->getDbSession(),
 			clusterIds,
-			searchKeywords,
+			{},
 			linkModel->getValue(_linkType->currentIndex()),
 			Artist::SortMethod::BySortName,
 			_container->count(), 20, moreResults)};
 
 	for (const auto& artist : artists)
-	{
-		Wt::WTemplate* entry {_container->addNew<Wt::WTemplate>(Wt::WString::tr("Lms.Explore.Artists.template.entry"))};
-
-		entry->bindWidget("name", LmsApplication::createArtistAnchor(artist));
-	}
+		_container->addWidget(ArtistListHelpers::createEntry(artist));
 
 	_showMore->setHidden(!moreResults);
 }

@@ -4,13 +4,13 @@ a, a:link, a:active, a:visited {
 	cursor: pointer;
 }
 
+body {
+	padding-bottom: 78px;
+}
+
 .Lms-vertical-align {
 	display: flex;
 	align-items: center;
-}
-
-.Lms-contents {
-	margin-bottom: 78px;
 }
 
 .Lms-admin-users-entry {
@@ -53,6 +53,10 @@ a.Lms-artistname:hover, a.Lms-artistname:focus {
 	filter: brightness(130%);
 }
 
+.Lms-clusters-control {
+	display: inline-block;
+}
+
 .Lms-control-btn:hover {
 	color: var(--hover-color);
 	cursor: pointer;
@@ -62,23 +66,29 @@ a.Lms-artistname:hover, a.Lms-artistname:focus {
 	filter: brightness(130%);
 }
 
+.Lms-cover-container-smaller {
+}
+
 .Lms-cover-smaller {
-	width: 64px; /* some cover may not be square */
-	min-height: 64px;
+	width: 64px;
 	border-radius: 3px;
 	box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
 }
 
+.Lms-cover-container-small {
+}
+
 .Lms-cover-small {
-	width: 96px; /* some cover may not be square */
-	min-height: 96px;
+	width: 96px;
 	border-radius: 3px;
 	box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
+}
+
+.Lms-cover-container-medium {
 }
 
 .Lms-cover-medium {
 	width: 128px;
-	min-height: 128px;
 	border-radius: 3px;
 	box-shadow: 0 2px 3px rgba(0, 0, 0, 0.4);
 }
@@ -115,6 +125,10 @@ a.Lms-artistname:hover, a.Lms-artistname:focus {
 
 .Lms-explore-release-cover {
 	max-width: 100%;
+}
+
+.Lms-explore-release-entries-container {
+	margin-bottom: 15px;
 }
 
 .Lms-explore-release-entry-tracknumber {
@@ -157,12 +171,9 @@ a.Lms-artistname:hover, a.Lms-artistname:focus {
 	padding-bottom: 4px;
 }
 
-.Lms-explore-artists-entry {
-	min-height: 48px;
-}
-
-.Lms-explore-artists-entry-name {
-	font-style: normal;
+.Lms-explore-artists-entry-small {
+	min-height: 28px;
+	margin: 0;
 }
 
 .Lms-explore-artists-input {
@@ -174,9 +185,8 @@ a.Lms-artistname:hover, a.Lms-artistname:focus {
 	padding-bottom: 8px;
 }
 
-.Lms-explore-artistlink {
-	min-height: 28px;
-	margin: 0;
+.Lms-explore-mode-container {
+	margin-bottom: 8px;
 }
 
 .Lms-explore-tracks-entry {
@@ -223,8 +233,10 @@ a.Lms-artistname:hover, a.Lms-artistname:focus {
 	justify-content: center;
 }
 
-.Lms-navbar {
-	border-radius: 0;
+.Lms-navbar-search {
+	max-width: 175px;
+	padding-top: 7.5px;
+	padding-bottom: 7.5px;
 }
 
 .Lms-playqueue-btn {

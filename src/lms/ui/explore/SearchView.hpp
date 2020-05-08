@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2018 Emeric Poupon
+ * Copyright (C) 2020 Emeric Poupon
  *
  * This file is part of LMS.
  *
@@ -19,18 +19,30 @@
 
 #pragma once
 
-#include <Wt/WTemplate.h>
+#include <string>
+#include <vector>
 
-namespace Database {
-	class Release;
-}
+#include <Wt/WTemplate.h>
 
 namespace UserInterface {
 
-class ReleaseLink : public Wt::WTemplate
+class Filters;
+
+class SearchView : public Wt::WTemplate
 {
 	public:
-		ReleaseLink(Wt::Dbo::ptr<Database::Release>);
+		SearchView(Filters* filters);
+
+		void refreshView(const std::string& searchText);
+
+	private:
+		void refreshView();
+		void searchArtists();
+		void searchReleases();
+		void searchTracks();
+
+		Filters* _filters {};
+		std::vector<std::string> _keywords;
 };
 
 } // namespace UserInterface

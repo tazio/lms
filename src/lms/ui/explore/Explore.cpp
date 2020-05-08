@@ -31,14 +31,11 @@
 #include "LmsApplication.hpp"
 
 #include "ArtistInfoView.hpp"
-#include "ArtistsInfoView.hpp"
 #include "ArtistsView.hpp"
 #include "ArtistView.hpp"
 #include "Filters.hpp"
-#include "ReleaseInfoView.hpp"
 #include "ReleasesView.hpp"
 #include "ReleaseView.hpp"
-#include "TracksInfoView.hpp"
 #include "TracksView.hpp"
 
 namespace UserInterface {
@@ -109,12 +106,11 @@ handleInfoPathChange(Wt::WStackedWidget* stack)
 
 } // namespace
 
-Explore::Explore()
-: Wt::WTemplate(Wt::WString::tr("Lms.Explore.template"))
+Explore::Explore(Filters* filters)
+: Wt::WTemplate {Wt::WString::tr("Lms.Explore.template")}
+, _filters {filters}
 {
 	addFunction("tr", &Functions::tr);
-
-	_filters = bindNew<Filters>("filters");
 
 	// Contents
 	Wt::WStackedWidget* contentsStack = bindNew<Wt::WStackedWidget>("contents");
@@ -154,15 +150,6 @@ Explore::Explore()
 
 	auto artistInfo = std::make_unique<ArtistInfo>();
 	infoStack->addWidget(std::move(artistInfo));
-
-	auto artistsInfo = std::make_unique<ArtistsInfo>();
-	infoStack->addWidget(std::move(artistsInfo));
-
-	auto releaseInfo = std::make_unique<ReleaseInfo>();
-	infoStack->addWidget(std::move(releaseInfo));
-
-	auto tracksInfo = std::make_unique<TracksInfo>();
-	infoStack->addWidget(std::move(tracksInfo));
 
 	wApp->internalPathChanged().connect(std::bind([=]
 	{

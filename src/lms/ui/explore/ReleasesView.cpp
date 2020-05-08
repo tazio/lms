@@ -24,9 +24,7 @@
 #include <Wt/WAnchor.h>
 #include <Wt/WImage.h>
 #include <Wt/WMenu.h>
-#include <Wt/WSplitButton.h>
 #include <Wt/WText.h>
-#include <Wt/WTemplate.h>
 
 #include "database/Release.hpp"
 #include "database/User.hpp"
@@ -37,8 +35,8 @@
 
 #include "resource/ImageResource.hpp"
 
-#include "LmsApplication.hpp"
 #include "Filters.hpp"
+#include "LmsApplication.hpp"
 
 using namespace Database;
 
@@ -56,8 +54,10 @@ _filters(filters)
 		auto addItem = [this](Wt::WMenu& menu,const Wt::WString& str, Mode mode)
 		{
 			auto* item {menu.addItem(str)};
-			item->triggered().connect([this, mode] { refreshView(mode); });
 			item->clicked().connect([this, mode] { refreshView(mode); });
+
+			if (mode == defaultMode)
+				item->renderSelected(true);
 		};
 
 		addItem(*menu, Wt::WString::tr("Lms.Explore.random"), Mode::Random);
@@ -70,12 +70,12 @@ _filters(filters)
 	Wt::WText* playBtn {bindNew<Wt::WText>("play-btn", Wt::WString::tr("Lms.Explore.template.play-btn"), Wt::TextFormat::XHTML)};
 	playBtn->clicked().connect([this]
 	{
-		releasesPlay.emit(getReleases());
+		releasesPlay.emit(getAllReleases());
 	});
 	Wt::WText* addBtn {bindNew<Wt::WText>("add-btn", Wt::WString::tr("Lms.Explore.template.add-btn"), Wt::TextFormat::XHTML)};
 	addBtn->clicked().connect([this]
 	{
-		releasesAdd.emit(getReleases());
+		releasesAdd.emit(getAllReleases());
 	});
 
 	_container = bindNew<Wt::WContainerWidget>("releases");
@@ -95,6 +95,7 @@ void
 Releases::refreshView()
 {
 	_container->clear();
+	_randomReleases.clear();
 	addSome();
 }
 
@@ -109,12 +110,12 @@ void
 Releases::addSome()
 {
 	bool moreResults {};
-	const auto releasesId {getReleases(Range {static_cast<std::size_t>(_container->count()), batchSize}, moreResults)};
-	for (const Database::IdType releaseId : releasesId )
-	{
-		auto transaction {LmsApp->getDbSession().createSharedTransaction()};
 
-		const Database::Release::pointer release {Database::Release::getById(LmsApp->getDbSession(), releaseId)};
+	auto transaction {LmsApp->getDbSession().createSharedTransaction()};
+
+	for (const Release::pointer& release : getReleases(Range {static_cast<std::size_t>(_container->count()), batchSize}, moreResults))
+	{
+		const IdType releaseId {release.id()};
 
 		Wt::WTemplate* entry = _container->addNew<Wt::WTemplate>(Wt::WString::tr("Lms.Explore.Releases.template.entry"));
 		entry->addFunction("tr", Wt::WTemplate::Functions::tr);
@@ -158,12 +159,35 @@ Releases::addSome()
 	_showMore->setHidden(!moreResults);
 }
 
-std::vector<Database::IdType>
-Releases::getReleases(std::optional<Database::Range> range, bool& moreResults) const
+std::vector<Database::Release::pointer>
+Releases::getRandomReleases(std::optional<Range> range, bool& moreResults)
 {
 	std::vector<Release::pointer> releases;
 
-	auto transaction {LmsApp->getDbSession().createSharedTransaction()};
+	if (_randomReleases.empty())
+		_randomReleases = Release::getAllIdsRandom(LmsApp->getDbSession(), _filters->getClusterIds(), maxItemsPerMode[Mode::Random]);
+
+	{
+		auto itBegin {std::cbegin(_randomReleases) + std::min(range ? range->offset : 0, _randomReleases.size())};
+		auto itEnd {std::cbegin(_randomReleases) + std::min(range ? range->offset + range->limit : _randomReleases.size(), _randomReleases.size())};
+
+		for (auto it {itBegin}; it != itEnd; ++it)
+		{
+			Release::pointer release {Release::getById(LmsApp->getDbSession(), *it)};
+			if (release)
+				releases.push_back(release);
+		}
+
+		moreResults = (itEnd != std::cend(_randomReleases));
+	}
+
+	return releases;
+}
+
+std::vector<Database::Release::pointer>
+Releases::getReleases(std::optional<Range> range, bool& moreResults)
+{
+	std::vector<Release::pointer> releases;
 
 	const std::optional<std::size_t> modeLimit{maxItemsPerMode[_mode]};
 	if (modeLimit)
@@ -177,7 +201,7 @@ Releases::getReleases(std::optional<Database::Range> range, bool& moreResults) c
 	switch (_mode)
 	{
 		case Mode::Random:
-			releases = Release::getAllRandom(LmsApp->getDbSession(), _filters->getClusterIds(), 5);
+			releases = getRandomReleases(range, moreResults);
 			break;
 
 		case Mode::RecentlyPlayed:
@@ -195,29 +219,27 @@ Releases::getReleases(std::optional<Database::Range> range, bool& moreResults) c
 		case Mode::All:
 			releases = Release::getByFilter(LmsApp->getDbSession(), _filters->getClusterIds(), {}, range, moreResults);
 			break;
-
-		default:
-			releases = Release::getByFilter(LmsApp->getDbSession(), _filters->getClusterIds(), {}, range, moreResults);
 	}
-
-	std::vector<Database::IdType> res;
-	res.reserve(releases.size());
-	std::transform(std::cbegin(releases), std::cend(releases), std::back_inserter(res), [](const Release::pointer& release) { return release.id(); });
 
 	if (range && modeLimit && (range->offset + range->limit == *modeLimit))
 		moreResults = false;
 
-//	if (_mode == Mode::Random)
-//		_randomReleases = res;
-
-	return res;
+	return releases;
 }
 
 std::vector<Database::IdType>
-Releases::getReleases() const
+Releases::getAllReleases()
 {
+	auto transaction {LmsApp->getDbSession().createSharedTransaction()};
+
 	bool moreResults;
-	return getReleases(std::nullopt, moreResults);
+	const auto releases {getReleases(std::nullopt, moreResults)};
+
+	std::vector<IdType> res;
+	res.reserve(releases.size());
+	std::transform(std::cbegin(releases), std::cend(releases), std::back_inserter(res), [](const Release::pointer& release) { return release.id(); });
+
+	return res;
 }
 
 } // namespace UserInterface

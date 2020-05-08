@@ -19,14 +19,20 @@
 
 #pragma once
 
+#include <memory>
+
 #include <Wt/WComboBox.h>
 #include <Wt/WContainerWidget.h>
-#include <Wt/WLineEdit.h>
 #include <Wt/WPushButton.h>
 #include <Wt/WTemplate.h>
 #include <Wt/WSignal.h>
 
 #include "database/Types.hpp"
+
+namespace Database
+{
+	class Artist;
+}
 
 namespace UserInterface {
 
@@ -46,7 +52,6 @@ class Artists : public Wt::WTemplate
 
 		Filters* _filters;
 		Wt::WPushButton* _showMore;
-		Wt::WLineEdit* _search;
 		Wt::WComboBox* _linkType;
 		Wt::WContainerWidget* _container;
 };
