@@ -50,7 +50,7 @@ class Artists : public Wt::WTemplate
 			Random,
 			RecentlyPlayed,
 			RecentlyAdded,
-			MostlyPlayed,
+			MostPlayed,
 			All
 		};
 
@@ -68,7 +68,7 @@ class Artists : public Wt::WTemplate
 			{Mode::Random, batchSize * 4},
 			{Mode::RecentlyPlayed, batchSize * 4},
 			{Mode::RecentlyAdded, batchSize * 2},
-			{Mode::MostlyPlayed, batchSize * 2},
+			{Mode::MostPlayed, batchSize * 2},
 			{Mode::All, std::nullopt},
 		};
 

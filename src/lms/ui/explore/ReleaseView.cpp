@@ -285,8 +285,7 @@ Release::refreshSimilarReleases(const std::vector<Database::IdType>& similarRele
 
 	for (Database::IdType id : similarReleasesId)
 	{
-		Database::Release::pointer similarRelease {Database::Release::getById(LmsApp->getDbSession(), id)};
-
+		Database::Release::pointer similarRelease{Database::Release::getById(LmsApp->getDbSession(), id)};
 		if (!similarRelease)
 			continue;
 

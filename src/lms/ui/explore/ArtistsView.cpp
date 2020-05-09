@@ -57,7 +57,7 @@ Artists::Artists(Filters* filters)
 
 		addItem(*menu, Wt::WString::tr("Lms.Explore.random"), Mode::Random);
 		addItem(*menu, Wt::WString::tr("Lms.Explore.recently-played"), Mode::RecentlyPlayed);
-		addItem(*menu, Wt::WString::tr("Lms.Explore.mostly-played"), Mode::MostlyPlayed);
+		addItem(*menu, Wt::WString::tr("Lms.Explore.most-played"), Mode::MostPlayed);
 		addItem(*menu, Wt::WString::tr("Lms.Explore.recently-added"), Mode::RecentlyAdded);
 		addItem(*menu, Wt::WString::tr("Lms.Explore.all"), Mode::All);
 	}

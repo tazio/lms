@@ -19,16 +19,24 @@
 
 #pragma once
 
-#include <Wt/WContainerWidget.h>
+#include <memory>
+
 #include <Wt/WSignal.h>
+#include <Wt/WTemplate.h>
 
 #include "database/Types.hpp"
+
+namespace Database
+{
+	class Artist;
+	class Release;
+}
 
 namespace UserInterface {
 
 class Filters;
 
-class Artist : public Wt::WContainerWidget
+class Artist : public Wt::WTemplate
 {
 	public:
 		Artist(Filters* filters);
@@ -41,8 +49,11 @@ class Artist : public Wt::WContainerWidget
 
 	private:
 		void refreshView();
+		void refreshSimilarArtists(const std::vector<Database::IdType>& similarArtistsId);
 
-		Filters* _filters;
+		std::unique_ptr<Wt::WTemplate> createRelease(const Wt::Dbo::ptr<Database::Artist>& artist, const Wt::Dbo::ptr<Database::Release>& release);
+
+		Filters* _filters {};
 };
 
 } // namespace UserInterface

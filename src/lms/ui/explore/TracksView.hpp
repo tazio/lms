@@ -51,7 +51,7 @@ class Tracks : public Wt::WTemplate
 			Random,
 			RecentlyPlayed,
 			RecentlyAdded,
-			MostlyPlayed,
+			MostPlayed,
 			All
 		};
 
@@ -68,10 +68,10 @@ class Tracks : public Wt::WTemplate
 		static constexpr std::size_t batchSize {20};
 		static inline std::unordered_map<Mode, std::optional<std::size_t>> maxItemsPerMode
 		{
-			{Mode::Random, 512},
-			{Mode::RecentlyPlayed, 256},
-			{Mode::RecentlyAdded, 256},
-			{Mode::MostlyPlayed, 256},
+			{Mode::Random, batchSize * 20},
+			{Mode::RecentlyPlayed, batchSize * 10},
+			{Mode::RecentlyAdded, batchSize * 10},
+			{Mode::MostPlayed, batchSize * 10},
 			{Mode::All, std::nullopt},
 		};
 

@@ -51,7 +51,7 @@ class Releases : public Wt::WTemplate
 			Random,
 			RecentlyPlayed,
 			RecentlyAdded,
-			MostlyPlayed,
+			MostPlayed,
 			All
 		};
 
@@ -70,7 +70,7 @@ class Releases : public Wt::WTemplate
 			{Mode::Random, batchSize * 6},
 			{Mode::RecentlyPlayed, batchSize * 3},
 			{Mode::RecentlyAdded, batchSize * 2},
-			{Mode::MostlyPlayed, batchSize * 2},
+			{Mode::MostPlayed, batchSize * 2},
 			{Mode::All, std::nullopt},
 		};
 
