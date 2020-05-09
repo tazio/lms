@@ -159,9 +159,9 @@ TrackList::getEntriesReverse(std::optional<std::size_t> offset, std::optional<st
 
 static
 Wt::Dbo::Query<Artist::pointer>
-createArtistsQuery(Wt::Dbo::Session& session, IdType tracklistId, const std::set<IdType>& clusterIds, std::optional<TrackArtistLink::Type> linkType)
+createArtistsQuery(Wt::Dbo::Session& session, const std::string& queryStr, IdType tracklistId, const std::set<IdType>& clusterIds, std::optional<TrackArtistLink::Type> linkType)
 {
-	auto query {session.query<Artist::pointer>("SELECT a from artist a")};
+	auto query {session.query<Artist::pointer>(queryStr)};
 	query.join("track t ON t.id = t_a_l.track_id");
 	query.join("track_artist_link t_a_l ON t_a_l.artist_id = a.id");
 	query.join("tracklist_entry p_e ON p_e.track_id = t.id");
@@ -184,12 +184,12 @@ createArtistsQuery(Wt::Dbo::Session& session, IdType tracklistId, const std::set
 		WhereClause clusterClause;
 		for (auto id : clusterIds)
 		{
-			clusterClause.Or(WhereClause("c.id = ?")).bind(std::to_string(id));
+			clusterClause.Or(WhereClause("c.id = ?"));
 			query.bind(id);
 		}
 
 		oss << " " << clusterClause.get();
-		oss << " GROUP BY t.id HAVING COUNT(*) = " << clusterIds.size() << ")";
+		oss << " GROUP BY t.id,a.id HAVING COUNT(DISTINCT c.id) = " << clusterIds.size() << ")";
 
 		query.where(oss.str());
 	}
@@ -199,9 +199,12 @@ createArtistsQuery(Wt::Dbo::Session& session, IdType tracklistId, const std::set
 
 static
 Wt::Dbo::Query<Release::pointer>
-createReleasesQuery(Wt::Dbo::Session& session, IdType tracklistId, const std::set<IdType>& clusterIds)
+createReleasesQuery(Wt::Dbo::Session& session, const std::string& queryStr, IdType tracklistId, const std::set<IdType>& clusterIds)
 {
-	auto query {session.query<Release::pointer>("SELECT r from release r INNER JOIN track t ON t.release_id = r.id INNER JOIN tracklist_entry p_e ON p_e.track_id = t.id INNER JOIN tracklist p ON p.id = p_e.tracklist_id")};
+	auto query {session.query<Release::pointer>(queryStr)};
+	query.join("track t ON t.release_id = r.id");
+	query.join("tracklist_entry p_e ON p_e.track_id = t.id");
+	query.join("tracklist p ON p.id = p_e.tracklist_id");
 
 	query.where("p.id = ?").bind(tracklistId);
 
@@ -216,12 +219,12 @@ createReleasesQuery(Wt::Dbo::Session& session, IdType tracklistId, const std::se
 		WhereClause clusterClause;
 		for (auto id : clusterIds)
 		{
-			clusterClause.Or(WhereClause("c.id = ?")).bind(std::to_string(id));
+			clusterClause.Or(WhereClause("c.id = ?"));
 			query.bind(id);
 		}
 
 		oss << " " << clusterClause.get();
-		oss << " GROUP BY t.id HAVING COUNT(*) = " << clusterIds.size() << ")";
+		oss << " GROUP BY t.id HAVING COUNT(DISTINCT c.id) = " << clusterIds.size() << ")";
 
 		query.where(oss.str());
 	}
@@ -266,9 +269,8 @@ TrackList::getArtistsReverse(const std::set<IdType>& clusterIds, std::optional<T
 	assert(session());
 	assert(IdIsValid(self()->id()));
 
-	Wt::Dbo::collection<Artist::pointer> collection = createArtistsQuery(*session(), self()->id(), clusterIds, linkType)
+	Wt::Dbo::collection<Artist::pointer> collection = createArtistsQuery(*session(), "SELECT DISTINCT a from artist a", self()->id(), clusterIds, linkType)
 		.orderBy("p_e.id DESC")
-		.groupBy("a.id")
 		.limit(range ? static_cast<int>(range->limit) + 1 : -1)
 		.offset(range ? static_cast<int>(range->offset) : -1);
 
@@ -290,9 +292,8 @@ TrackList::getReleasesReverse(const std::set<IdType>& clusterIds, std::optional<
 	assert(session());
 	assert(IdIsValid(self()->id()));
 
-	Wt::Dbo::collection<Release::pointer> collection = createReleasesQuery(*session(), self()->id(), clusterIds)
+	Wt::Dbo::collection<Release::pointer> collection = createReleasesQuery(*session(), "SELECT DISTINCT r from release r", self()->id(), clusterIds)
 		.orderBy("p_e.id DESC")
-		.groupBy("r.id")
 		.limit(range ? static_cast<int>(range->limit) + 1 : -1)
 		.offset(range ? static_cast<int>(range->offset) : -1);
 
@@ -415,7 +416,7 @@ TrackList::getTopArtists(const std::set<IdType>& clusterIds, std::optional<Track
 	assert(session());
 	assert(IdIsValid(self()->id()));
 
-	auto query {createArtistsQuery(*session(), self()->id(), clusterIds, linkType)};
+	auto query {createArtistsQuery(*session(), "SELECT a from artist a", self()->id(), clusterIds, linkType)};
 
 	Wt::Dbo::collection<Artist::pointer> collection = query
 		.orderBy("COUNT(a.id) DESC")
@@ -443,7 +444,7 @@ TrackList::getTopReleases(const std::set<IdType>& clusterIds, std::optional<Rang
 	assert(session());
 	assert(IdIsValid(self()->id()));
 
-	auto query {createReleasesQuery(*session(), self()->id(), clusterIds)};
+	auto query {createReleasesQuery(*session(), "SELECT r from release r", self()->id(), clusterIds)};
 
 	Wt::Dbo::collection<Release::pointer> collection = query
 		.orderBy("COUNT(r.id) DESC")

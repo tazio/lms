@@ -126,7 +126,7 @@ createQuery(Session& session,
 		}
 
 		oss << " " << clusterClause.get();
-		oss << " GROUP BY t.id HAVING COUNT(DISTINCT c.id) = " << clusterIds.size() << ")";
+		oss << " GROUP BY t.id,a.id HAVING COUNT(DISTINCT c.id) = " << clusterIds.size() << ")";
 
 		query.where(oss.str());
 	}
