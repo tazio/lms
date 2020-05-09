@@ -25,6 +25,8 @@
 
 #include "common/ValueStringModel.hpp"
 #include "database/Artist.hpp"
+#include "database/User.hpp"
+#include "database/TrackList.hpp"
 #include "utils/Logger.hpp"
 
 #include "ArtistListHelpers.hpp"
@@ -147,6 +149,20 @@ Artists::getArtists(std::optional<Range> range, bool& moreResults)
 	{
 		case Mode::Random:
 			artists = getRandomArtists(range, moreResults);
+			break;
+
+		case Mode::RecentlyPlayed:
+			artists = LmsApp->getUser()->getPlayedTrackList(LmsApp->getDbSession())
+				->getArtistsReverse(_filters->getClusterIds(),
+						linkType,
+						range, moreResults);
+			break;
+
+		case Mode::MostPlayed:
+			artists = LmsApp->getUser()->getPlayedTrackList(LmsApp->getDbSession())
+				->getTopArtists(_filters->getClusterIds(),
+						linkType,
+						range, moreResults);
 			break;
 
 		case Mode::RecentlyAdded:

@@ -119,7 +119,7 @@
 <message id="Lms.Explore.various-artists">Artistes divers</message>
 
 <!--Explore:Artist-->
-<message id="Lms.Explore.ArtistInfo.similar-artists">Artistes similaires</message>
+<message id="Lms.Explore.Artist.similar-artists">Artistes similaires</message>
 
 <!--Explore:Artists-->
 <message id="Lms.Explore.Artists.linktype-all">Tous les artistes</message>

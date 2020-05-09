@@ -199,7 +199,7 @@ Artist::createRelease(const Database::Artist::pointer& artist, const Release::po
 void
 Artist::refreshSimilarArtists(const std::vector<Database::IdType>& similarArtistsId)
 {
-	auto* similarArtistsContainer {bindNew<Wt::WContainerWidget>("similar-releases")};
+	auto* similarArtistsContainer {bindNew<Wt::WContainerWidget>("similar-artists")};
 
 	for (Database::IdType artistId : similarArtistsId)
 	{

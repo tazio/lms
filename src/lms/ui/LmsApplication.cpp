@@ -125,10 +125,7 @@ LmsApplication::LmsApplication(const Wt::WEnvironment& env,
 	messageResourceBundle().use(appRoot() + "admin-user");
 	messageResourceBundle().use(appRoot() + "admin-users");
 	messageResourceBundle().use(appRoot() + "artist");
-	messageResourceBundle().use(appRoot() + "artistinfo");
-	messageResourceBundle().use(appRoot() + "artistlink");
 	messageResourceBundle().use(appRoot() + "artists");
-	messageResourceBundle().use(appRoot() + "artistsinfo");
 	messageResourceBundle().use(appRoot() + "error");
 	messageResourceBundle().use(appRoot() + "explore");
 	messageResourceBundle().use(appRoot() + "login");
@@ -136,15 +133,11 @@ LmsApplication::LmsApplication(const Wt::WEnvironment& env,
 	messageResourceBundle().use(appRoot() + "messages");
 	messageResourceBundle().use(appRoot() + "playqueue");
 	messageResourceBundle().use(appRoot() + "release");
-	messageResourceBundle().use(appRoot() + "releaseinfo");
-	messageResourceBundle().use(appRoot() + "releaselink");
 	messageResourceBundle().use(appRoot() + "releases");
-	messageResourceBundle().use(appRoot() + "releasesinfo");
 	messageResourceBundle().use(appRoot() + "search");
 	messageResourceBundle().use(appRoot() + "settings");
 	messageResourceBundle().use(appRoot() + "templates");
 	messageResourceBundle().use(appRoot() + "tracks");
-	messageResourceBundle().use(appRoot() + "tracksinfo");
 
 	// Require js here to avoid async problems
 	requireJQuery("js/jquery-1.10.2.min.js");
@@ -291,10 +284,10 @@ LmsApplication::createCluster(Database::Cluster::pointer cluster, bool canDelete
 	{
 		switch (cluster->getType().id() % 6)
 		{
-			case 0: return "label-primary";
-			case 1: return "label-default";
-			case 2: return "label-info";
-			case 3: return "label-warning";
+			case 0: return "label-info";
+			case 1: return "label-warning";
+			case 2: return "label-primary";
+			case 3: return "label-default";
 			case 4: return "label-success";
 			case 5: return "label-danger";
 		}

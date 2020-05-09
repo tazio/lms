@@ -1223,7 +1223,7 @@ testSingleUser(Session& session)
 		bool hasMore {};
 		CHECK(user->getPlayedTrackList(session)->getCount() == 0);
 		CHECK(user->getPlayedTrackList(session)->getTopTracks({}, Range {0, 1}, hasMore).empty());
-		CHECK(user->getPlayedTrackList(session)->getTopArtists(0, 1, hasMore).empty());
+		CHECK(user->getPlayedTrackList(session)->getTopArtists({}, std::nullopt, Range {0, 1}, hasMore).empty());
 		CHECK(user->getPlayedTrackList(session)->getTopReleases({}, Range {0, 1}, hasMore).empty());
 		CHECK(user->getQueuedTrackList(session)->getCount() == 0);
 	}

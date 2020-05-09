@@ -158,6 +158,46 @@ TrackList::getEntriesReverse(std::optional<std::size_t> offset, std::optional<st
 }
 
 static
+Wt::Dbo::Query<Artist::pointer>
+createArtistsQuery(Wt::Dbo::Session& session, IdType tracklistId, const std::set<IdType>& clusterIds, std::optional<TrackArtistLink::Type> linkType)
+{
+	auto query {session.query<Artist::pointer>("SELECT a from artist a")};
+	query.join("track t ON t.id = t_a_l.track_id");
+	query.join("track_artist_link t_a_l ON t_a_l.artist_id = a.id");
+	query.join("tracklist_entry p_e ON p_e.track_id = t.id");
+	query.join("tracklist p ON p.id = p_e.tracklist_id");
+
+	query.where("p.id = ?").bind(tracklistId);
+
+	if (linkType)
+		query.where("t_a_l.type = ?").bind(*linkType);
+
+	if (!clusterIds.empty())
+	{
+		std::ostringstream oss;
+		oss << "a.id IN (SELECT DISTINCT a.id FROM artist a"
+				" INNER JOIN track t ON t.id = t_a_l.track_id"
+				" INNER JOIN track_artist_link t_a_l ON t_a_l.artist_id = a.id"
+				" INNER JOIN cluster c ON c.id = t_c.cluster_id"
+				" INNER JOIN track_cluster t_c ON t_c.track_id = t.id";
+
+		WhereClause clusterClause;
+		for (auto id : clusterIds)
+		{
+			clusterClause.Or(WhereClause("c.id = ?")).bind(std::to_string(id));
+			query.bind(id);
+		}
+
+		oss << " " << clusterClause.get();
+		oss << " GROUP BY t.id HAVING COUNT(*) = " << clusterIds.size() << ")";
+
+		query.where(oss.str());
+	}
+
+	return query;
+}
+
+static
 Wt::Dbo::Query<Release::pointer>
 createReleasesQuery(Wt::Dbo::Session& session, IdType tracklistId, const std::set<IdType>& clusterIds)
 {
@@ -220,7 +260,31 @@ createTracksQuery(Wt::Dbo::Session& session, IdType tracklistId, const std::set<
 	return query;
 }
 
-std::vector<Wt::Dbo::ptr<Release>>
+std::vector<Artist::pointer>
+TrackList::getArtistsReverse(const std::set<IdType>& clusterIds, std::optional<TrackArtistLink::Type> linkType, std::optional<Range> range, bool& moreResults) const
+{
+	assert(session());
+	assert(IdIsValid(self()->id()));
+
+	Wt::Dbo::collection<Artist::pointer> collection = createArtistsQuery(*session(), self()->id(), clusterIds, linkType)
+		.orderBy("p_e.id DESC")
+		.groupBy("a.id")
+		.limit(range ? static_cast<int>(range->limit) + 1 : -1)
+		.offset(range ? static_cast<int>(range->offset) : -1);
+
+	auto res {std::vector<Artist::pointer>(collection.begin(), collection.end())};
+	if (range && res.size() == static_cast<std::size_t>(range->limit) + 1)
+	{
+		moreResults = true;
+		res.pop_back();
+	}
+	else
+		moreResults = false;
+
+	return res;
+}
+
+std::vector<Release::pointer>
 TrackList::getReleasesReverse(const std::set<IdType>& clusterIds, std::optional<Range> range, bool& moreResults) const
 {
 	assert(session());
@@ -346,26 +410,29 @@ TrackList::getDuration() const
 }
 
 std::vector<Artist::pointer>
-TrackList::getTopArtists(std::optional<std::size_t> offset, std::optional<std::size_t> limit, bool& moreResults) const
+TrackList::getTopArtists(const std::set<IdType>& clusterIds, std::optional<TrackArtistLink::Type> linkType, std::optional<Range> range, bool& moreResults) const
 {
 	assert(session());
 	assert(IdIsValid(self()->id()));
 
-	Wt::Dbo::collection<Artist::pointer> collection = session()->query<Artist::pointer>("SELECT a from artist a INNER JOIN track t ON t.id = t_a_l.track_id INNER JOIN track_artist_link t_a_l ON t_a_l.artist_id = a.id INNER JOIN tracklist_entry p_e ON p_e.track_id = t.id INNER JOIN tracklist p ON p.id = p_e.tracklist_id")
-		.where("p.id = ?").bind(self()->id())
-		.groupBy("a.id")
+	auto query {createArtistsQuery(*session(), self()->id(), clusterIds, linkType)};
+
+	Wt::Dbo::collection<Artist::pointer> collection = query
 		.orderBy("COUNT(a.id) DESC")
-		.limit(limit ? static_cast<int>(*limit) + 1 : -1)
-		.offset(offset ? static_cast<int>(*offset) : -1);
+		.groupBy("a.id")
+		.limit(range ? static_cast<int>(range->limit) + 1 : -1)
+		.offset(range ? static_cast<int>(range->offset) : -1);
 
 	auto res {std::vector<Artist::pointer>(collection.begin(), collection.end())};
-	if (limit && res.size() == static_cast<std::size_t>(*limit) + 1)
+
+	if (range && res.size() == static_cast<std::size_t>(range->limit) + 1)
 	{
 		moreResults = true;
 		res.pop_back();
 	}
 	else
 		moreResults = false;
+
 
 	return res;
 }

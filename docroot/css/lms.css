@@ -185,6 +185,10 @@ a.Lms-artistname:hover, a.Lms-artistname:focus {
 	padding-bottom: 8px;
 }
 
+.Lms-explore-artist-entries-container {
+	margin-bottom: 15px;
+}
+
 .Lms-explore-mode-container {
 	margin-bottom: 8px;
 }

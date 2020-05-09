@@ -36,7 +36,7 @@ namespace UserInterface::ReleaseListHelpers
 	std::unique_ptr<Wt::WTemplate>
 	createEntrySmall(const Database::Release::pointer& release)
 	{
-		auto entry {std::make_unique<Wt::WTemplate>(Wt::WString::tr("Lms.Explore.ReleaseLink.template"))};
+		auto entry {std::make_unique<Wt::WTemplate>(Wt::WString::tr("Lms.Explore.Releases.template.entry-small"))};
 
 		entry->bindWidget("release-name", LmsApplication::createReleaseAnchor(release));
 
